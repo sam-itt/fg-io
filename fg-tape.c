@@ -8,7 +8,19 @@
 #include "sg-file.h"
 
 
+static uint8_t kinds[NKINDS] = {KDOUBLE,KFLOAT,KINT,KINT16,KINT8,KBOOL};
+static char *pretty_kinds[NKINDS] = {"double","float","int","int16","int8","bool"};
+
+static uint8_t ipols[NIPOLS] = {IPOL_LINEAR, IPOL_ANGULAR_DEG, IPOL_ANGULAR_RAD};
+static char *pretty_ipols[NIPOLS] = {"linear", "angular-deg", "angular-rad"};
+
 char *_get_node_value(const char *xml, const char *node_name, size_t *olen);
+
+const char *fg_tape_signal_ipol_pretty(uint8_t ipol_type)
+{
+    return ipol_type < NIPOLS ? pretty_ipols[ipol_type]: "unknown";
+}
+
 
 bool fg_tape_read_duration(FGTape *self, SGFile *file)
 {
@@ -122,64 +134,48 @@ bool fg_tape_read_signal(FGTape *self, char **cursor)
     char *tmptype = _get_node_value(begin, "type", &tlen);
     //printf("Read signal type: %.*s\n", tlen, tmptype);
 
-    char *prop = _get_node_value(begin, "property", &tlen);
+    size_t plen;
+    char *prop = _get_node_value(begin, "property", &plen);
     if(!prop){
-        printf("Couldn't find property for current %s signal, bailing out\n", tmptype);
+        printf("Couldn't find property name for current %s signal, bailing out\n", tmptype);
         return false;
     }
 
     size_t ilen;
-    char *ipol_type = _get_node_value(begin, "interpolation", &ilen);
-    uint8_t tmpipol;
-
-    if(ipol_type){
-        if(!strncmp(ipol_type, "linear", ilen)){
-            tmpipol = IPOL_LINEAR;
-        }else if(!strncmp(ipol_type, "angular-deg", ilen)){
-            tmpipol = IPOL_ANGULAR_DEG;
-        }else if(!strncmp(ipol_type, "angular-rad", ilen)){
-            tmpipol = IPOL_ANGULAR_RAD;
-        }else{
-            printf("Unknown interpolation type: %.*s, bailing out\n", ilen, ipol_type);
-            return false;
-        }
-    }else{
-        printf("Couldn't find interpolation type for current %s signal, assuming linear\n", tmptype);
-        tmpipol = IPOL_LINEAR;
+    char *ipol_type = _get_node_value(begin, "interpolation", &ilen); //TODO: fill in a struct with char* and int len
+    if(!prop){
+        printf("Couldn't find interpolation for current %s signal, bailing out\n", tmptype);
+        return false;
     }
 
-    switch(tmptype[0]){
-        case 'd': //double
-            self->signals.doubles.names[self->signals.doubles.count] =  strndup(prop, tlen);
-            self->signals.doubles.ipol_types[self->signals.doubles.count] = tmpipol;
-            self->signals.doubles.count++;
+    int tmpipol = -1;
+    for(uint8_t i = 0; i < NIPOLS; i++){
+        if(!strncmp(ipol_type, pretty_ipols[i], ilen)){
+            tmpipol = ipols[i];
             break;
-        case 'f': //float
-            self->signals.floats.names[self->signals.floats.count] =  strndup(prop, tlen);
-            self->signals.floats.ipol_types[self->signals.floats.count] = tmpipol;
-            self->signals.floats.count++;
-            break;
-        case 'i': //ints
-            if(!strcmp(tmptype,"int")){
-                self->signals.ints.names[self->signals.ints.count] =  strndup(prop, tlen);
-                self->signals.ints.ipol_types[self->signals.ints.count] = tmpipol;
-                self->signals.ints.count++;
-            }else if(!strcmp(tmptype,"int16")){
-                self->signals.int16s.names[self->signals.int16s.count] =  strndup(prop, tlen);
-                self->signals.int16s.ipol_types[self->signals.int16s.count] = tmpipol;
-                self->signals.int16s.count++;
-            }else if(!strcmp(tmptype,"int8")){
-                self->signals.int8s.names[self->signals.int8s.count] =  strndup(prop, tlen);
-                self->signals.int8s.ipol_types[self->signals.int8s.count] = tmpipol;
-                self->signals.int8s.count++;
-            }
-            break;
-        case 'b': //bool
-            self->signals.bools.names[self->signals.bools.count] =  strndup(prop, tlen);
-            self->signals.bools.ipol_types[self->signals.bools.count] = tmpipol;
-            self->signals.bools.count++;
-            break;
-    };
+        }
+    }
+    if( tmpipol < 0){
+        printf("Unknown interpolation type: %.*s, bailing out\n", ilen, ipol_type);
+        return false;
+    }
+
+
+    FGTapeSignalKind *kind = NULL;
+    for(uint8_t i = 0; i < NKINDS; i++){
+        if(!strncmp(tmptype, pretty_kinds[i], tlen)){
+            kind = &self->signals[kinds[i]];
+        }
+    }
+    if(!kind){
+        printf("Couldn't find a matching signal kind for read value %s",tmptype);
+        return false;
+    }
+
+    kind->names[kind->count] =  strndup(prop, plen); //TODO: free me
+    kind->ipol_types[kind->count] = tmpipol;
+    kind->count++;
+
     *cursor = end;
     return true;
 }
@@ -211,15 +207,6 @@ int fg_tape_signal_kind_init(FGTapeSignalKind *self, const char *type, const cha
     return n_signals;
 }
 
-const char *fg_tape_signal_ipol_pretty(int ipol_type)
-{
-    switch(ipol_type){
-        case 0: return "linear";
-        case 1: return "angular-deg";
-        case 2: return "angular-rad";
-    };
-    return "unknown";
-}
 
 void fg_tape_signal_kind_dump(FGTapeSignalKind *self, uint8_t level)
 {
@@ -241,32 +228,23 @@ void fg_tape_dump(FGTape *self)
     printf("\tDuration: %f\n",self->duration);
     printf("\tRecord size(bytes): %d\n",self->record_size);
 //    printf("\tNumber of records: %d\n",self->record_count);
-    printf("\tEach record has:\n"
-        "\t\t%d doubles\n"
-        "\t\t%d floats\n"
-        "\t\t%d ints\n"
-        "\t\t%d int16s\n"
-        "\t\t%d int8s\n"
-        "\t\t%d bools\n",
-        self->signals.doubles.count,
-        self->signals.floats.count,
-        self->signals.ints.count,
-        self->signals.int16s.count,
-        self->signals.int8s.count,
-        self->signals.bools.count
-    );
-    printf("\tDouble signals:\n");
-    fg_tape_signal_kind_dump(&(self->signals.doubles), 2);
-    printf("\tFloat signals:\n");
-    fg_tape_signal_kind_dump(&(self->signals.floats), 2);
-    printf("\tInt signals:\n");
-    fg_tape_signal_kind_dump(&(self->signals.ints), 2);
-    printf("\tInt16 signals:\n");
-    fg_tape_signal_kind_dump(&(self->signals.int16s), 2);
-    printf("\tInt8 signals:\n");
-    fg_tape_signal_kind_dump(&(self->signals.int8s), 2);
-    printf("\tBool signals:\n");
-    fg_tape_signal_kind_dump(&(self->signals.bools), 2);
+//
+    printf("\tEach record has:\n");
+    for(int i = 0; i < NKINDS; i++){
+        printf("\t\t%d %s\n",
+            self->signals[kinds[i]].count,
+            pretty_kinds[i]
+        );
+    }
+
+    for(int i = 0; i < NKINDS; i++){
+        if(self->signals[kinds[i]].count > 0){
+            printf("\t%s signals:\n", pretty_kinds[i]);
+            fg_tape_signal_kind_dump(&(self->signals[kinds[i]]), 2);
+        }else{
+            printf("\t%s signals: None\n", pretty_kinds[i]);
+        }
+    }
 }
 
 bool fg_tape_read_signals(FGTape *self, SGFile *file)
@@ -286,16 +264,16 @@ bool fg_tape_read_signals(FGTape *self, SGFile *file)
     sg_file_get_payload(file, &container, (uint8_t**)&xml);
     end = xml + container.size;
 
-    int count[6];
-    count[0] = fg_tape_signal_kind_init(&(self->signals.doubles), "double", xml);
-    count[1] = fg_tape_signal_kind_init(&(self->signals.floats), "float", xml);
-    count[2] = fg_tape_signal_kind_init(&(self->signals.ints), "int", xml);
-    count[3] = fg_tape_signal_kind_init(&(self->signals.int16s), "int16", xml);
-    count[4] = fg_tape_signal_kind_init(&(self->signals.int8s), "int8", xml);
-    count[5] = fg_tape_signal_kind_init(&(self->signals.bools), "bool", xml);
 
-    for(int i = 0; i < 6; i++){
-        self->signals.total_count += count[i] < 0 ? 0 : count[i];
+
+    int count[NKINDS];
+    for(int i = 0; i < NKINDS; i++){
+        count[i] = fg_tape_signal_kind_init(
+            &(self->signals[kinds[i]]), /*Might as well use 'i' direcly?*/
+            pretty_kinds[i],
+            xml
+        );
+        self->signal_count += count[i] < 0 ? 0 : count[i];
     }
 
     self->record_size = sizeof(double)        * 1 /* sim time */        +
@@ -313,7 +291,7 @@ bool fg_tape_read_signals(FGTape *self, SGFile *file)
         return false;
     }
 
-    for(int i = 0; i < self->signals.total_count; i++)
+    for(int i = 0; i < self->signal_count; i++)
         fg_tape_read_signal(self, &cursor);
 #if 0
     fg_tape_dump(self);
@@ -365,54 +343,25 @@ FGTape *fg_tape_open(const char *filename)
     return rv;
 }
 
+/**
+ * Searchs for a FGTapeSignal signal descriptor(array + index in array) matching
+ * "name"
+ *
+ *
+ */
 bool fg_tape_get_signal(FGTape *self, const char *name, FGTapeSignal *signal)
 {
     int i;
-    for(i = 0; i < self->signals.doubles.count; i++){
-        if(!strcmp(self->signals.doubles.names[i], name)){
-            signal->idx = i;
-            signal->type = TDOUBLE;
-            return true;
-        }
-    }
+    FGTapeSignalKind *kind;
 
-    for(i = 0; i < self->signals.floats.count; i++){
-        if(!strcmp(self->signals.floats.names[i], name)){
-            signal->idx = i;
-            signal->type = TFLOAT;
-            return true;
-        }
-    }
-
-    for(i = 0; i < self->signals.ints.count; i++){
-        if(!strcmp(self->signals.ints.names[i], name)){
-            signal->idx = i;
-            signal->type = TINT;
-            return true;
-        }
-    }
-
-    for(i = 0; i < self->signals.int16s.count; i++){
-        if(!strcmp(self->signals.int16s.names[i], name)){
-            signal->idx = i;
-            signal->type = TINT16;
-            return true;
-        }
-    }
-
-    for(i = 0; i < self->signals.int8s.count; i++){
-        if(!strcmp(self->signals.int8s.names[i], name)){
-            signal->idx = i;
-            signal->type = TINT8;
-            return true;
-        }
-    }
-
-    for(i = 0; i < self->signals.bools.count; i++){
-        if(!strcmp(self->signals.bools.names[i], name)){
-            signal->idx = i;
-            signal->type = TBOOL;
-            return true;
+    for(int i = 0; i < NKINDS; i++){
+        kind = &self->signals[kinds[i]];
+        for(int j = 0; j < kind->count; j++){
+            if(!strcmp(kind->names[j], name)){
+                signal->type = kinds[i];
+                signal->idx = j;
+                return true;
+            }
         }
     }
     return false;
@@ -432,7 +381,7 @@ float fg_tape_get_record_float_value(FGTape *self, FGTapeRecord *record, size_t 
     float rv;
 
     rv = *(float *)(record->data +
-        sizeof(double)*self->signals.doubles.count +
+        sizeof(double)*self->signals[KDOUBLE].count +
         sizeof(float)*idx
     );
 
@@ -444,8 +393,8 @@ int fg_tape_get_record_int_value(FGTape *self, FGTapeRecord *record, size_t idx)
     float rv;
 
     rv = *(int *)(record->data +
-        sizeof(double)*self->signals.doubles.count +
-        sizeof(float)*self->signals.floats.count +
+        sizeof(double)*self->signals[KDOUBLE].count +
+        sizeof(float)*self->signals[KFLOAT].count +
         sizeof(int) * idx
     );
     return rv;
@@ -456,9 +405,9 @@ short int fg_tape_get_record_int16_value(FGTape *self, FGTapeRecord *record, siz
     short int rv;
 
     rv = *(short int*)(record->data +
-        sizeof(double)*self->signals.doubles.count +
-        sizeof(float)*self->signals.floats.count +
-        sizeof(int)*self->signals.ints.count +
+        sizeof(double)*self->signals[KDOUBLE].count +
+        sizeof(float)*self->signals[KFLOAT].count +
+        sizeof(int)*self->signals[KINT].count +
         sizeof(short int) * idx
     );
     return rv;
@@ -469,10 +418,10 @@ signed char fg_tape_get_record_int8_value(FGTape *self, FGTapeRecord *record, si
     signed char rv;
 
     rv = *(signed char*)(record->data +
-        sizeof(double)*self->signals.doubles.count +
-        sizeof(float)*self->signals.floats.count +
-        sizeof(int)*self->signals.ints.count +
-        sizeof(short int) * self->signals.ints.count +
+        sizeof(double)*self->signals[KDOUBLE].count +
+        sizeof(float)*self->signals[KFLOAT].count +
+        sizeof(int)*self->signals[KINT].count +
+        sizeof(short int) * self->signals[KINT16].count +
         sizeof(signed char) * idx
     );
     return rv;
@@ -485,11 +434,11 @@ bool fg_tape_get_record_bool_value(FGTape *self, FGTapeRecord *record, size_t id
     bool rv;
 
     rv = *(record->data + sizeof(double) +
-        sizeof(double)*self->signals.doubles.count +
-        sizeof(float)*self->signals.floats.count +
-        sizeof(int)*self->signals.ints.count +
-        sizeof(short int) * self->signals.ints.count +
-        sizeof(signed char) * self->signals.int8s.count
+        sizeof(double)*self->signals[KDOUBLE].count +
+        sizeof(float)*self->signals[KFLOAT].count +
+        sizeof(int)*self->signals[KINT].count +
+        sizeof(short int) * self->signals[KINT].count +
+        sizeof(signed char) * self->signals[KINT8].count
     );
     return rv;
 }

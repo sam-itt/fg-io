@@ -6,13 +6,15 @@
 #define IPOL_LINEAR 0
 #define IPOL_ANGULAR_DEG 1
 #define IPOL_ANGULAR_RAD 2
+#define NIPOLS 3
 
-#define TDOUBLE 0
-#define TFLOAT 1
-#define TINT 2
-#define TINT16 3
-#define TINT8 4
-#define TBOOL 5
+#define KDOUBLE 0
+#define KFLOAT 1
+#define KINT 2
+#define KINT16 3
+#define KINT8 4
+#define KBOOL 5
+#define NKINDS 6
 
 typedef struct{
     char **names;
@@ -25,23 +27,14 @@ typedef struct{
 }FGTapeSignalKind;
 
 typedef struct{
-    FGTapeSignalKind doubles;
-    FGTapeSignalKind floats;
-    FGTapeSignalKind ints;
-    FGTapeSignalKind int16s;
-    FGTapeSignalKind int8s;
-    FGTapeSignalKind bools;
-    size_t total_count;
-}FGTapeSignals;
-
-typedef struct{
     SGFile *file;
 
     float duration;
     size_t record_size;
 //    size_t record_count;
 
-    FGTapeSignals signals;
+    FGTapeSignalKind signals[NKINDS];
+    size_t signal_count;
 
     uint8_t *data;
 }FGTape;
