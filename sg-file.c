@@ -81,6 +81,17 @@ begin:
     return false;
 }
 
+/**
+ * Puts the payload in the given pointer. If not NULL, payload must
+ * hold the adresse of a pointer to a large enough chunk to store the
+ * container's content.
+ *
+ * if payload is NULL the area will be malloc'ed.
+ *
+ * The caller MUST free payload after use.
+ *
+ * Returns true on success, false on failure.
+ */
 bool sg_file_get_payload(SGFile *self, SGContainer *container, uint8_t **payload)
 {
     gzseek(self, sg_container_payload(container),SEEK_SET);

@@ -78,7 +78,6 @@ char *strnode(const char *xml, const char *node_name)
         }
         cursor++;
     }
-
     return NULL;
 }
 
@@ -215,6 +214,14 @@ int fg_tape_signal_kind_init(FGTapeSignalKind *self, const char *type, const cha
     return n_signals;
 }
 
+void fg_tape_signal_kind_dispose(FGTapeSignalKind *self)
+{
+    for(int i = 0; i < self->count; i++){
+        free(self->names[i]);
+    }
+    free(self->names);
+    free(self->ipol_types);
+}
 
 void fg_tape_signal_kind_dump(FGTapeSignalKind *self, uint8_t level)
 {
@@ -300,54 +307,66 @@ bool fg_tape_read_signals(FGTape *self, SGFile *file)
 
     for(int i = 0; i < self->signal_count; i++)
         fg_tape_read_signal(self, &cursor);
-#if 0
-    fg_tape_dump(self);
-    exit(0);
-#endif
     return true;
 }
 
-FGTape *fg_tape_open(const char *filename)
+FGTape *fg_tape_init_from_file(FGTape *self, const char *filename)
+{
+    SGFile *file;
+    SGContainer container;
+    bool ret;
+    FGTape *rv = NULL;
+
+    file = sg_file_open(filename);
+    if(!file){
+        return NULL;
+    }
+
+    sg_file_get_container(file, 0, &container); //Skip first "header" type container
+
+    fg_tape_read_duration(self, file);
+    fg_tape_read_signals(self, file);
+
+    ret = sg_file_get_container(file, 3, &container);
+    if(!ret){
+        printf("Couldn't find payload container, bailing out\n");
+        goto out;
+    }
+
+    ret = sg_file_get_payload(file, &container, &(self->data));
+    if(!ret){
+        printf("Couldn't get payload, bailing out\n");
+        goto out;
+    }
+
+    rv = self;
+out:
+    sg_file_close(file);
+    return rv;
+}
+
+FGTape *fg_tape_new_from_file(const char *filename)
 {
     FGTape *rv;
-    SGContainer container;
-    char *xml;
-    bool ret;
 
     rv = calloc(1,sizeof(FGTape));
     if(!rv)
         return NULL;
 
-    rv->file = sg_file_open(filename);
-    if(!rv->file){
-        free(rv);
+    if(!fg_tape_init_from_file(rv, filename)){
+        fg_tape_free(rv);
         return NULL;
     }
-
-    sg_file_get_container(rv->file, 0, &container); //Skip first "header" type container
-
-
-    fg_tape_read_duration(rv, rv->file);
-
-    fg_tape_read_signals(rv, rv->file);
-
-    _get_node_value(NULL, NULL, NULL); //clear internal buffer
-
-
-    ret = sg_file_get_container(rv->file, 3, &container);
-    if(!ret){
-        printf("Couldn't find payload container, bailing out\n");
-        return NULL;
-    }
-
-    ret = sg_file_get_payload(rv->file, &container, &(rv->data));
-    if(!ret){
-        printf("Couldn't get payload, bailing out\n");
-        free(rv);
-        return NULL;
-    }
-
     return rv;
+}
+
+void fg_tape_free(FGTape *self)
+{
+    for(int i = 0; i < NKINDS; i++)
+        fg_tape_signal_kind_dispose(&self->signals[i]);
+    if(self->data)
+        free(self->data);
+    free(self);
 }
 
 /**

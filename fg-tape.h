@@ -27,8 +27,6 @@ typedef struct{
 }FGTapeSignalKind;
 
 typedef struct{
-    SGFile *file;
-
     float duration;
     size_t record_size;
 //    size_t record_count;
@@ -50,10 +48,10 @@ typedef struct{
     uint8_t data[];
 }FGTapeRecord;
 
-FGTape *fg_tape_open(const char *filename);
-
 #define fg_tape_get_value(self, record, __type, signal) (*(__type *)fg_tape_get_value_ptr(self, record, (signal)->type, (signal)->idx))
 
+FGTape *fg_tape_new_from_file(const char *filename);
+void fg_tape_free(FGTape *self);
 
 bool fg_tape_get_signal(FGTape *self, const char *name, FGTapeSignal *signal);
 void *fg_tape_get_value_ptr(FGTape *self, FGTapeRecord *record, uint8_t kind, size_t idx);

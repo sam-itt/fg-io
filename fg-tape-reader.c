@@ -53,7 +53,8 @@ int main(int argc, char *argv[])
     FGTapeRecord *rec;
     bool rv;
 
-    tape = fg_tape_open("dr400.fgtape");
+    tape = fg_tape_new_from_file("dr400.fgtape");
+//    tape = fg_tape_open("dr400.fgtape");
 
     rv = fg_tape_get_signal(tape, "/position[0]/longitude-deg[0]", &longitude);
     if(!rv){
