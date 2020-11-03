@@ -242,8 +242,8 @@ void fg_tape_dump(FGTape *self)
     printf("FGTape(%p):\n",self);
     printf("\tDuration: %f\n",self->duration);
     printf("\tRecord size(bytes): %d\n",self->record_size);
-//    printf("\tNumber of records: %d\n",self->record_count);
-//
+    printf("\tNumber of records: %d\n",self->record_count);
+
     printf("\tEach record has:\n");
     for(int i = 0; i < NKINDS; i++){
         printf("\t\t%d %s\n",
@@ -338,6 +338,8 @@ FGTape *fg_tape_init_from_file(FGTape *self, const char *filename)
         printf("Couldn't get payload, bailing out\n");
         goto out;
     }
+    self->record_count = container.size/self->record_size;
+    printf("Container should have %d records\n", self->record_count);
 
     rv = self;
 out:

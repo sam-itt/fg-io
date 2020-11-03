@@ -29,7 +29,7 @@ typedef struct{
 typedef struct{
     float duration;
     size_t record_size;
-//    size_t record_count;
+    size_t record_count;
 
     FGTapeSignalKind signals[NKINDS];
     size_t signal_count;
@@ -56,4 +56,5 @@ void fg_tape_free(FGTape *self);
 bool fg_tape_get_signal(FGTape *self, const char *name, FGTapeSignal *signal);
 void *fg_tape_get_value_ptr(FGTape *self, FGTapeRecord *record, uint8_t kind, size_t idx);
 
+void fg_tape_dump(FGTape *self);
 #endif /* FG_TAPE_H */
