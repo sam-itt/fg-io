@@ -32,10 +32,11 @@ bool fg_tape_read_duration(FGTape *self, SGFile *file)
     char *xml;
     char *cursor;
     char *end;
+    bool ret;
 
-    sg_file_read_next(file, &container);
-    if(container.type != 1){
-        printf("Second container isn't of expected type(%d), bailing out\n",1);
+    ret = sg_file_get_container(file, 1, &container);
+    if(!ret){
+        printf("Couldn't find meta container, bailing out\n");
         return NULL;
     }
 
@@ -257,18 +258,17 @@ bool fg_tape_read_signals(FGTape *self, SGFile *file)
     char *xml;
     char *cursor;
     char *end;
+    bool ret;
 
-    sg_file_read_next(file, &container); /*TODO: Move that up to sg_file_get_container(type)*/
-    if(container.type != 2){
-        printf("Second container isn't of expected type(%d), bailing out\n",2);
+    ret = sg_file_get_container(file, 2, &container);
+    if(!ret){
+        printf("Couldn't find XML descriptor container, bailaing out\n");
         return NULL;
     }
 
     xml = NULL;
     sg_file_get_payload(file, &container, (uint8_t**)&xml);
     end = xml + container.size;
-
-
 
     int count[NKINDS];
     for(int i = 0; i < NKINDS; i++){
@@ -309,6 +309,7 @@ FGTape *fg_tape_open(const char *filename)
     FGTape *rv;
     SGContainer container;
     char *xml;
+    bool ret;
 
     rv = calloc(1,sizeof(FGTape));
     if(!rv)
@@ -320,7 +321,7 @@ FGTape *fg_tape_open(const char *filename)
         return NULL;
     }
 
-    sg_file_read_next(rv->file, &container); //Skip first "header" type container
+    sg_file_get_container(rv->file, 0, &container); //Skip first "header" type container
 
 
     fg_tape_read_duration(rv, rv->file);
@@ -330,13 +331,12 @@ FGTape *fg_tape_open(const char *filename)
     _get_node_value(NULL, NULL, NULL); //clear internal buffer
 
 
-    sg_file_read_next(rv->file, &container); /*TODO: Move that up to sg_file_get_container(type)*/
-    if(container.type != 3){
-        printf("Second container isn't of expected type(%d), bailing out\n",1);
+    ret = sg_file_get_container(rv->file, 3, &container);
+    if(!ret){
+        printf("Couldn't find payload container, bailing out\n");
         return NULL;
     }
 
-    bool ret;
     ret = sg_file_get_payload(rv->file, &container, &(rv->data));
     if(!ret){
         printf("Couldn't get payload, bailing out\n");

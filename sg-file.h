@@ -19,7 +19,8 @@ typedef struct{
 
 SGFile *sg_file_open(const char *filename);
 int sg_file_close(SGFile *self);
-void sg_file_read_next(SGFile *self, SGContainer *dest);
+bool sg_file_read_next(SGFile *self, SGContainer *dest);
+bool sg_file_get_container(SGFile *self, int type, SGContainer *dest);
 bool sg_file_get_payload(SGFile *self, SGContainer *container, uint8_t **payload);
 
 

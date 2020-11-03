@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <zconf.h>
 #include <zlib.h>
 #include <stdint.h>
 
@@ -28,7 +29,7 @@ int sg_file_close(SGFile *self)
     return gzclose(self);
 }
 
-void sg_file_read_next(SGFile *self, SGContainer *dest)
+bool sg_file_read_next(SGFile *self, SGContainer *dest)
 {
 
     uint32_t ui32Data=0;
@@ -40,10 +41,44 @@ void sg_file_read_next(SGFile *self, SGContainer *dest)
     gzfread(&ui32Data, sizeof(uint32_t), 1, self);
     gzfread(&ui64Data, sizeof(uint64_t), 1, self);
 
+    if(gzeof(self))
+        return false;
+
     dest->type = (int)ui32Data;
     dest->size = ui64Data;
 
     gzseek(self, dest->size, SEEK_CUR);
+    return true;
+}
+
+/* *
+ * Searches for the first encountered container of type type
+ * in the file, starting at current position.
+ *
+ * If not found, the find is rewinded and searched again.
+ *
+ * returns: true on success, false on failure. On success
+ * dest is filed in. On failure it's undefined.
+ *
+ */
+bool sg_file_get_container(SGFile *self, int type, SGContainer *dest)
+{
+    bool rewound = false;
+
+begin:
+    while(sg_file_read_next(self, dest)){
+        if(dest->type == type){
+            return true;
+        }
+    }
+    //We've reached the end of the file, let's try again.
+    if(!rewound){
+        rewound = true;
+        gzseek(self, 0 + sizeof(uint32_t), SEEK_SET); //Skip the endian magic check
+        goto begin;
+    }
+
+    return false;
 }
 
 bool sg_file_get_payload(SGFile *self, SGContainer *container, uint8_t **payload)
