@@ -374,11 +374,22 @@ bool fg_tape_get_signal(FGTape *self, const char *name, FGTapeSignal *signal)
 void *fg_tape_get_value_ptr(FGTape *self, FGTapeRecord *record, uint8_t kind, size_t idx)
 {
     void *rv;
+    static bool _bstore; //Not thread safe
 
     rv = record->data;
     for(int i = 0; i < kind; i++)
         rv += kind_sizes[i]*self->signals[kinds[i]].count;
-    rv += kind_sizes[kind]*idx;
+    if(kind != KBOOL){
+        rv += kind_sizes[kind]*idx;
+    }else{
+        int byte_idx = idx/8;
+        int local_bit_idx = idx - byte_idx*8;
+
+        rv += sizeof(unsigned char)*byte_idx;
+
+        _bstore = ((*(uint8_t*)rv) & (1<<(local_bit_idx)));
+        rv = &_bstore;
+    }
 
     return rv;
 }
