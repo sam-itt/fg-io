@@ -18,7 +18,13 @@ static size_t kind_sizes[NKINDS] = {
 static uint8_t ipols[NIPOLS] = {IPOL_LINEAR, IPOL_ANGULAR_DEG, IPOL_ANGULAR_RAD};
 static char *pretty_ipols[NIPOLS] = {"linear", "angular-deg", "angular-rad"};
 
-char *_get_node_value(const char *xml, const char *node_name, size_t *olen);
+
+typedef struct{
+    char *str;
+    size_t len;
+}XString;
+
+bool _get_node_value(const char *xml, const char *node_name, XString *str);
 
 const char *fg_tape_signal_ipol_pretty(uint8_t ipol_type)
 {
@@ -30,7 +36,7 @@ bool fg_tape_read_duration(FGTape *self, SGFile *file)
 {
     SGContainer container;
     char *xml;
-    char *cursor;
+    XString cursor;
     char *end;
     bool ret;
 
@@ -43,12 +49,12 @@ bool fg_tape_read_duration(FGTape *self, SGFile *file)
     xml = NULL;
     sg_file_get_payload(file, &container, (uint8_t**)&xml);
 
-    cursor =  _get_node_value(xml, "tape-duration", NULL);
-    if(!cursor){
+    _get_node_value(xml, "tape-duration", &cursor);
+    if(!cursor.str){
         printf("Couldn't find tape-duration's value in file xml descriptor, bailing out\n");
         return false;
     }
-    self->duration = atof(cursor);
+    self->duration = atof(cursor.str);
 
     return true;
 }
@@ -64,18 +70,21 @@ bool fg_tape_read_duration(FGTape *self, SGFile *file)
  * the actual content
  *
  */
-char *_get_node_value(const char *xml, const char *node_name, size_t *olen)
+bool _get_node_value(const char *xml, const char *node_name, XString *str)
 {
     static size_t current_size = 0;
-    static char *look_for = NULL;
+    static char *look_for = NULL; //TODO: Remove this and search for < and then node_name
 
     int len;
 
     if(!node_name && look_for){
         current_size = 0;
         free(look_for);
-        return NULL;
+        return false;
     }
+
+    str->str = NULL;
+    str->len = 0;
 
     len = strlen(node_name);
     if(len+2 > current_size){ //We need one mor char for '<' and one more byte for '\0'
@@ -97,26 +106,25 @@ char *_get_node_value(const char *xml, const char *node_name, size_t *olen)
     cursor = strstr(xml, look_for); // <node_name
     if(!cursor){
         printf("Couldn't find %s> tag in given xml string\n", look_for);
-        return NULL;
+        return false;
     }
     cursor = strchr(cursor, '>');
     if(!cursor){
         printf("Couldn't find %s's GT\n", look_for);
-        return NULL;
+        return false;
     }
 
-    if(olen){
-        //<type bar="foo">data</type> whe are at '>'
-        //count distance to closing </type> to read what's in between
-        tmp = strchr(cursor, '<');
-        if(!tmp){
-            printf("Couldn't find </%s> closing tag\n",node_name);
-            return false;
-        }
-        *olen = (tmp-1) - cursor;
+    //<type bar="foo">data</type> whe are at '>'
+    //count distance to closing </type> to read what's in between
+    tmp = strchr(cursor, '<');
+    if(!tmp){
+        printf("Couldn't find </%s> closing tag\n",node_name);
+        return false;
     }
+    str->len = (tmp-1) - cursor;
+    str->str = cursor+1;
 
-    return cursor+1;
+    return true;
 }
 
 bool fg_tape_read_signal(FGTape *self, char **cursor)
@@ -135,49 +143,49 @@ bool fg_tape_read_signal(FGTape *self, char **cursor)
         return false;
     }
 
-    size_t tlen;
-    char *tmptype = _get_node_value(begin, "type", &tlen);
+    XString tmptype;
+    _get_node_value(begin, "type", &tmptype);
     //printf("Read signal type: %.*s\n", tlen, tmptype);
 
-    size_t plen;
-    char *prop = _get_node_value(begin, "property", &plen);
-    if(!prop){
-        printf("Couldn't find property name for current %s signal, bailing out\n", tmptype);
+    XString prop;
+    _get_node_value(begin, "property", &prop);
+    if(!prop.str){
+        printf("Couldn't find property name for current %.*s signal, bailing out\n", tmptype.len, tmptype.str);
         return false;
     }
 
-    size_t ilen;
-    char *ipol_type = _get_node_value(begin, "interpolation", &ilen); //TODO: fill in a struct with char* and int len
-    if(!prop){
-        printf("Couldn't find interpolation for current %s signal, bailing out\n", tmptype);
+    XString ipol_type;
+    _get_node_value(begin, "interpolation", &ipol_type);
+    if(!ipol_type.str){
+        printf("Couldn't find interpolation for current  %.*s signal, bailing out\n", tmptype.len, tmptype.str);
         return false;
     }
 
     int tmpipol = -1;
     for(uint8_t i = 0; i < NIPOLS; i++){
-        if(!strncmp(ipol_type, pretty_ipols[i], ilen)){
+        if(!strncmp(ipol_type.str, pretty_ipols[i], ipol_type.len)){
             tmpipol = ipols[i];
             break;
         }
     }
     if( tmpipol < 0){
-        printf("Unknown interpolation type: %.*s, bailing out\n", ilen, ipol_type);
+        printf("Unknown interpolation type: %.*s, bailing out\n", ipol_type.len, ipol_type.str);
         return false;
     }
 
 
     FGTapeSignalKind *kind = NULL;
     for(uint8_t i = 0; i < NKINDS; i++){
-        if(!strncmp(tmptype, pretty_kinds[i], tlen)){
+        if(!strncmp(tmptype.str, pretty_kinds[i], tmptype.len)){
             kind = &self->signals[kinds[i]];
         }
     }
     if(!kind){
-        printf("Couldn't find a matching signal kind for read value %s",tmptype);
+        printf("Couldn't find a matching signal kind for read value %.*s",tmptype.len, tmptype.str);
         return false;
     }
 
-    kind->names[kind->count] =  strndup(prop, plen); //TODO: free me
+    kind->names[kind->count] =  strndup(prop.str, prop.len); //TODO: free me
     kind->ipol_types[kind->count] = tmpipol;
     kind->count++;
 
@@ -198,14 +206,14 @@ bool fg_tape_read_signal(FGTape *self, char **cursor)
 int fg_tape_signal_kind_init(FGTapeSignalKind *self, const char *type, const char *xml)
 {
     int n_signals;
-    char *cursor;
+    XString cursor;
 
-    cursor = _get_node_value(xml, type, NULL);
-    if(!cursor){
+    _get_node_value(xml, type, &cursor);
+    if(!cursor.str){
         printf("Couldn't find count of '%s' signals, bailing out\n", type);
         return -1;
     }
-    n_signals = atoi(cursor);
+    n_signals = atoi(cursor.str);
     self->names = calloc(sizeof(char*), n_signals);
     self->ipol_types = calloc(sizeof(uint8_t), n_signals);
 
