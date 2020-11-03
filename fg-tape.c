@@ -10,6 +10,10 @@
 
 static uint8_t kinds[NKINDS] = {KDOUBLE,KFLOAT,KINT,KINT16,KINT8,KBOOL};
 static char *pretty_kinds[NKINDS] = {"double","float","int","int16","int8","bool"};
+static size_t kind_sizes[NKINDS] = {
+    sizeof(double), sizeof(float), sizeof(int),
+    sizeof(short int), sizeof(signed char), sizeof(unsigned char)
+};
 
 static uint8_t ipols[NIPOLS] = {IPOL_LINEAR, IPOL_ANGULAR_DEG, IPOL_ANGULAR_RAD};
 static char *pretty_ipols[NIPOLS] = {"linear", "angular-deg", "angular-rad"};
@@ -367,90 +371,15 @@ bool fg_tape_get_signal(FGTape *self, const char *name, FGTapeSignal *signal)
     return false;
 }
 
-double fg_tape_get_record_double_value(FGTape *self, FGTapeRecord *record, size_t idx)
+void *fg_tape_get_value_ptr(FGTape *self, FGTapeRecord *record, uint8_t kind, size_t idx)
 {
-    double rv;
+    void *rv;
 
-    rv = *(double*)(record->data + sizeof(double)*idx);
+    rv = record->data;
+    for(int i = 0; i < kind; i++)
+        rv += kind_sizes[i]*self->signals[kinds[i]].count;
+    rv += kind_sizes[kind]*idx;
 
     return rv;
 }
 
-float fg_tape_get_record_float_value(FGTape *self, FGTapeRecord *record, size_t idx)
-{
-    float rv;
-
-    rv = *(float *)(record->data +
-        sizeof(double)*self->signals[KDOUBLE].count +
-        sizeof(float)*idx
-    );
-
-    return rv;
-}
-
-int fg_tape_get_record_int_value(FGTape *self, FGTapeRecord *record, size_t idx)
-{
-    float rv;
-
-    rv = *(int *)(record->data +
-        sizeof(double)*self->signals[KDOUBLE].count +
-        sizeof(float)*self->signals[KFLOAT].count +
-        sizeof(int) * idx
-    );
-    return rv;
-}
-
-short int fg_tape_get_record_int16_value(FGTape *self, FGTapeRecord *record, size_t idx)
-{
-    short int rv;
-
-    rv = *(short int*)(record->data +
-        sizeof(double)*self->signals[KDOUBLE].count +
-        sizeof(float)*self->signals[KFLOAT].count +
-        sizeof(int)*self->signals[KINT].count +
-        sizeof(short int) * idx
-    );
-    return rv;
-}
-
-signed char fg_tape_get_record_int8_value(FGTape *self, FGTapeRecord *record, size_t idx)
-{
-    signed char rv;
-
-    rv = *(signed char*)(record->data +
-        sizeof(double)*self->signals[KDOUBLE].count +
-        sizeof(float)*self->signals[KFLOAT].count +
-        sizeof(int)*self->signals[KINT].count +
-        sizeof(short int) * self->signals[KINT16].count +
-        sizeof(signed char) * idx
-    );
-    return rv;
-}
-
-#if 0
-//Unimplemented
-bool fg_tape_get_record_bool_value(FGTape *self, FGTapeRecord *record, size_t idx)
-{
-    bool rv;
-
-    rv = *(record->data + sizeof(double) +
-        sizeof(double)*self->signals[KDOUBLE].count +
-        sizeof(float)*self->signals[KFLOAT].count +
-        sizeof(int)*self->signals[KINT].count +
-        sizeof(short int) * self->signals[KINT].count +
-        sizeof(signed char) * self->signals[KINT8].count
-    );
-    return rv;
-}
-#endif
-
-
-double fg_tape_get_record_signal_double_value(FGTape *self, FGTapeRecord *record, FGTapeSignal *signal)
-{
-    return fg_tape_get_record_double_value(self, record, signal->idx);
-}
-
-float fg_tape_get_record_signal_float_value(FGTape *self, FGTapeRecord *record, FGTapeSignal *signal)
-{
-    return fg_tape_get_record_float_value(self, record, signal->idx);
-}

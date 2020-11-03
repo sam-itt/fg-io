@@ -52,10 +52,10 @@ typedef struct{
 
 FGTape *fg_tape_open(const char *filename);
 
+#define fg_tape_get_value(self, record, __type, signal) (*(__type *)fg_tape_get_value_ptr(self, record, (signal)->type, (signal)->idx))
+
 
 bool fg_tape_get_signal(FGTape *self, const char *name, FGTapeSignal *signal);
+void *fg_tape_get_value_ptr(FGTape *self, FGTapeRecord *record, uint8_t kind, size_t idx);
 
-
-double fg_tape_get_record_signal_double_value(FGTape *self, FGTapeRecord *record, FGTapeSignal *signal);
-float fg_tape_get_record_signal_float_value(FGTape *self, FGTapeRecord *record, FGTapeSignal *signal);
 #endif /* FG_TAPE_H */

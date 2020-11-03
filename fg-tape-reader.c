@@ -93,8 +93,8 @@ int main(int argc, char *argv[])
         printf("%x: sim_time: %f, latitude: %f, longitude: %f\n",
             0xA423+i,
             rec->sim_time,
-            fg_tape_get_record_signal_double_value(tape, rec, &latitude),
-            fg_tape_get_record_signal_double_value(tape, rec, &longitude)
+            fg_tape_get_value(tape, rec, double, &latitude),
+            fg_tape_get_value(tape, rec, double, &longitude)
         );
 #endif
     }
