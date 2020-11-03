@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <strings.h>
 
 #include "fg-tape.h"
 #include "sg-file.h"
@@ -59,6 +60,28 @@ bool fg_tape_read_duration(FGTape *self, SGFile *file)
     return true;
 }
 
+/**
+ * Searchs for <nodename in xml and return the address of '<'
+ *
+ * returns NULL when not found
+ */
+char *strnode(const char *xml, const char *node_name)
+{
+    int len;
+    const char *cursor;
+
+    len = strlen(node_name);
+    cursor = xml;
+    while((cursor = strchr(cursor, '<'))){
+        if(!strncasecmp(cursor+1, node_name, len)){
+            return (char*)cursor;
+        }
+        cursor++;
+    }
+
+    return NULL;
+}
+
 /* *
  * Hepler function to read XML.
  *
@@ -72,45 +95,17 @@ bool fg_tape_read_duration(FGTape *self, SGFile *file)
  */
 bool _get_node_value(const char *xml, const char *node_name, XString *str)
 {
-    static size_t current_size = 0;
-    static char *look_for = NULL; //TODO: Remove this and search for < and then node_name
-
-    int len;
-
-    if(!node_name && look_for){
-        current_size = 0;
-        free(look_for);
-        return false;
-    }
-
-    str->str = NULL;
-    str->len = 0;
-
-    len = strlen(node_name);
-    if(len+2 > current_size){ //We need one mor char for '<' and one more byte for '\0'
-        char *tmp;
-        tmp = realloc(look_for, len + 2);
-        if(!tmp)
-            return NULL;
-        look_for = tmp;
-        current_size = len + 2;
-    }
-
-    *look_for = '<';
-    strncpy(look_for+1, node_name, len);
-    *(look_for + 1 + len) = '\0';
-
     char *tmp;
     char *cursor;
 
-    cursor = strstr(xml, look_for); // <node_name
+    cursor = strnode(xml, node_name);
     if(!cursor){
-        printf("Couldn't find %s> tag in given xml string\n", look_for);
+        printf("Couldn't find <%s> tag in given xml string\n", node_name);
         return false;
     }
     cursor = strchr(cursor, '>');
     if(!cursor){
-        printf("Couldn't find %s's GT\n", look_for);
+        printf("Couldn't find <%s's GT\n", node_name);
         return false;
     }
 
