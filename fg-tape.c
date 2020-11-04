@@ -19,6 +19,7 @@ static size_t kind_sizes[NKINDS] = {
 static uint8_t ipols[NIPOLS] = {IPOL_LINEAR, IPOL_ANGULAR_DEG, IPOL_ANGULAR_RAD};
 static char *pretty_ipols[NIPOLS] = {"linear", "angular-deg", "angular-rad"};
 
+static char *pretty_terms[NTERMS] = {"short","mid","long"};
 
 typedef struct{
     char *str;
@@ -242,7 +243,10 @@ void fg_tape_dump(FGTape *self)
     printf("FGTape(%p):\n",self);
     printf("\tDuration: %f\n",self->duration);
     printf("\tRecord size(bytes): %d\n",self->record_size);
-    printf("\tNumber of records: %d\n",self->record_count);
+    printf("\tNumber of records:\n");
+    for(int i = 0; i < NTERMS; i++){
+        printf("\t%s term: %d\n",pretty_terms[i], self->records[i].record_count);
+    }
 
     printf("\tEach record has:\n");
     for(int i = 0; i < NKINDS; i++){
@@ -259,6 +263,16 @@ void fg_tape_dump(FGTape *self)
         }else{
             printf("\t%s signals: None\n", pretty_kinds[i]);
         }
+    }
+
+    for(int i = 0; i < NTERMS; i++){
+        printf("\tTerm %s goes from %f to %f sim_time (dt: %f) with %d records\n",
+            pretty_terms[i],
+            fg_tape_first(self, i)->sim_time,
+            fg_tape_last(self, i)->sim_time,
+            fg_tape_last(self, i)->sim_time -  fg_tape_first(self, i)->sim_time,
+            self->records[i].record_count
+        );
     }
 }
 
@@ -310,6 +324,32 @@ bool fg_tape_read_signals(FGTape *self, SGFile *file)
     return true;
 }
 
+bool fg_tape_read_records(FGTape *self, FGTapeRecordSet *set, SGFile *file)
+{
+    SGContainer container;
+    bool rv;
+
+    rv = sg_file_read_next(file, &container);
+    if(!rv){
+        printf("Couldn't get next container\n");
+        return false;
+    }
+
+    if(container.type != RC_RAWDATA){
+        printf("Expecting RC_RAWDATA container(%d), got %d\n", RC_RAWDATA, container.type);
+    }
+
+    rv = sg_file_get_payload(file, &container, &(set->data));
+    if(!rv){
+        printf("Couldn't get payload, bailing out\n");
+        return false;
+    }
+    set->record_count = container.size/self->record_size;
+    printf("Container should have %d records\n", set->record_count);
+
+    return true;
+}
+
 FGTape *fg_tape_init_from_file(FGTape *self, const char *filename)
 {
     SGFile *file;
@@ -327,20 +367,25 @@ FGTape *fg_tape_init_from_file(FGTape *self, const char *filename)
     fg_tape_read_duration(self, file);
     fg_tape_read_signals(self, file);
 
-    ret = sg_file_get_container(file, 3, &container);
-    if(!ret){
-        printf("Couldn't find payload container, bailing out\n");
-        goto out;
+    /*Raw data*/
+    for(int i = 0; i < NTERMS; i++){
+        if(!fg_tape_read_records(self, &self->records[i], file))
+            break;
     }
 
-    ret = sg_file_get_payload(file, &container, &(self->data));
-    if(!ret){
-        printf("Couldn't get payload, bailing out\n");
-        goto out;
-    }
-    self->record_count = container.size/self->record_size;
-    printf("Container should have %d records\n", self->record_count);
+#if 0
 
+    FGTapeRecord *first, *last;
+    first = fg_tape_get_record(self, 0);
+    last = fg_tape_get_record(self, self->record_count-1);
+    double sim_duration = last->sim_time - first->sim_time;
+//    self->duration //seconds
+    printf("first->sim_time: %f, last->sim_time: %f\n", first->sim_time, last->sim_time);
+    printf("sim_duration: %f, duration(seconds): %f\n",sim_duration,self->duration);
+    self->sec2sim = sim_duration / self->duration;
+    self->first_stamp = first->sim_time;
+
+#endif
     rv = self;
 out:
     sg_file_close(file);
@@ -366,8 +411,11 @@ void fg_tape_free(FGTape *self)
 {
     for(int i = 0; i < NKINDS; i++)
         fg_tape_signal_kind_dispose(&self->signals[i]);
-    if(self->data)
-        free(self->data);
+
+    for(int i = 0; i < NTERMS; i++){
+        if(self->records[i].data)
+            free(self->records[i].data);
+    }
     free(self);
 }
 
@@ -417,4 +465,115 @@ void *fg_tape_get_value_ptr(FGTape *self, FGTapeRecord *record, uint8_t kind, si
 
     return rv;
 }
+
+
+static inline bool fg_tape_time_within(FGTape *self, double time, uint8_t term)
+{
+    if(time <= fg_tape_last(self, term)->sim_time && time >= fg_tape_first(self, term)->sim_time)
+        return true;
+    return false;
+}
+
+static inline bool fg_tape_time_inbetween(FGTape *self, double time, uint8_t older_term, uint8_t recent_term )
+{
+    if(time < fg_tape_first(self, older_term)->sim_time && time > fg_tape_last(self, recent_term)->sim_time)
+        return true;
+    return false;
+}
+
+
+bool fg_tape_get_keyframes_from_term(FGTape *self, double time, uint8_t term, FGTapeRecord **k1, FGTapeRecord **k2)
+{
+    // sanity checking
+    if( !self->records[term].record_count ){
+        // handle empty list
+        return false;
+    }else if( self->records[term].record_count == 1 ){
+        // handle list size == 1
+        *k1 = fg_tape_first(self, term);
+        *k2 = NULL;
+        return true;
+    }
+
+    unsigned int last = self->records[term].record_count - 1;
+    unsigned int first = 0;
+    unsigned int mid = ( last + first ) / 2;
+
+    bool done = false;
+    while ( !done )
+    {
+        // printf("first <=> last\n");
+        if ( last == first ) {
+            done = true;
+        } else if (fg_tape_get_record(self, term, mid)->sim_time < time && fg_tape_get_record(self, term, mid+1)->sim_time < time ) {
+            // too low
+            first = mid;
+            mid = ( last + first ) / 2;
+        } else if ( fg_tape_get_record(self, term, mid)->sim_time > time && fg_tape_get_record(self, term, mid+1)->sim_time > time ) {
+            // too high
+            last = mid;
+            mid = ( last + first ) / 2;
+        } else {
+            done = true;
+        }
+    }
+
+    *k1 = fg_tape_get_record(self, term, mid+1);
+    *k2 = fg_tape_get_record(self, term, mid);
+    return true;
+}
+
+bool fg_tape_get_keyframes_for(FGTape *self, double time, FGTapeRecord **k1, FGTapeRecord **k2)
+{
+    /* Short term is the last portion of the record regardless
+     * of how long it is: If it's empty there is nothing to play
+     */
+    if(!self->records[SHORT_TERM].record_count)
+        return false;
+
+    /* Time is past the last frame of the record*/
+    if(time > fg_tape_last(self, SHORT_TERM)->sim_time){
+        *k1 = fg_tape_last(self, SHORT_TERM);
+        *k2 = NULL;
+        return true;
+    }
+
+    if ( fg_tape_time_within(self, time, SHORT_TERM)) { //Time is within short_term bounds
+        return fg_tape_get_keyframes_from_term(self, time, SHORT_TERM, k1, k2);
+    } else if (self->records[MID_TERM].record_count ) { //Time is NOT within short_term
+        if ( fg_tape_time_inbetween(self, time, SHORT_TERM, MID_TERM)){ //Time is between medium_term last frame and short term first frame
+            *k1 = fg_tape_last(self, MID_TERM);
+            *k2 = fg_tape_first(self, SHORT_TERM);
+            return true;
+        } else { //Time is at least before medium_term last frame
+            if (fg_tape_time_within(self, time, MID_TERM)) { //Time is within medium term bounds
+                return fg_tape_get_keyframes_from_term(self, time, MID_TERM, k1, k2);
+            } else if(self->records[LONG_TERM].record_count){ //Time is strictly before first frame of medium_term
+                if (fg_tape_time_inbetween(self, time, MID_TERM, LONG_TERM)){ //Time is between first frame of medium_term and last frame of long_term
+                    *k1 = fg_tape_last(self, LONG_TERM);
+                    *k2 = fg_tape_first(self, MID_TERM);
+                } else {
+                    if (fg_tape_time_within(self, time, LONG_TERM)) { //Time is within long_term bounds
+                        return fg_tape_get_keyframes_from_term(self, time, LONG_TERM, k1, k2);
+                    } else { //Time is before the first frame of long_terms
+                        *k1 = fg_tape_first(self, LONG_TERM);
+                        *k2 = NULL;
+                        return true;
+                    }
+                }
+            } else { //Time is before the first frame of medium term AND there is no long term to search into
+                *k1 = fg_tape_first(self, MID_TERM);
+                *k2 = NULL;
+                return true;
+            }
+        }
+    } else { //Time is before the first frame of short term and there is no mid_term to continue looking for more ancient frames
+        *k1 = fg_tape_first(self, SHORT_TERM);
+        *k2 = NULL;
+        return true;
+    }
+
+    return false;
+}
+
 

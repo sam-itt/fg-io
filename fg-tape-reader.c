@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
     printf("Engine1: %d - %d\n",engine1.idx, engine1.type);
 
     fg_tape_dump(tape);
-
+#if 0
     for(int i = 0; i < tape->record_count; i++){
         rec = (FGTapeRecord*)(tape->data + tape->record_size*i);
         printf("%x: sim_time: %f, latitude: %f, longitude: %f, engines 0: %s, 1: %s\n",
@@ -61,7 +61,19 @@ int main(int argc, char *argv[])
             fg_tape_get_value(tape, rec, bool, &engine1) ? "on" : "off"
         );
     }
-
+#endif
+#if 1
+    bool rv2;
+    FGTapeRecord *first, *second;
+    for(double i = 0; i < tape->duration; i += 10){
+        rv2 = fg_tape_get_keyframes_for(tape, i, &first, &second);
+        printf("Found time=%f to be between records t=%f and t=%f\n",
+            i,
+            first->sim_time,
+            second ? second->sim_time : -1
+        );
+    }
+#endif
 	exit(EXIT_SUCCESS);
 }
 
