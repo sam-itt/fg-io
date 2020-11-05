@@ -16,8 +16,7 @@ static size_t types_sizes[NTypes] = {
     sizeof(short int), sizeof(signed char), sizeof(unsigned char)
 };
 
-static uint8_t ipols[NIPOLS] = {IPOL_LINEAR, IPOL_ANGULAR_DEG, IPOL_ANGULAR_RAD};
-static char *pretty_ipols[NIPOLS] = {"linear", "angular-deg", "angular-rad"};
+static char *pretty_ipols[NIpols] = {"discrete", "linear", "angular-rad", "angular-deg"};
 
 static char *pretty_terms[NTERMS] = {"short","mid","long"};
 
@@ -27,12 +26,6 @@ typedef struct{
 }XString;
 
 bool _get_node_value(const char *xml, const char *node_name, XString *str);
-
-const char *fg_tape_signal_ipol_pretty(uint8_t ipol_type)
-{
-    return ipol_type < NIPOLS ? pretty_ipols[ipol_type]: "unknown";
-}
-
 
 bool fg_tape_read_duration(FGTape *self, SGFile *file)
 {
@@ -157,9 +150,9 @@ bool fg_tape_read_signal(FGTape *self, char **cursor)
     }
 
     int tmpipol = -1;
-    for(uint8_t i = 0; i < NIPOLS; i++){
+    for(IpolType i = IPDiscrete; i < NIpols; i++){
         if(!strncmp(ipol_type.str, pretty_ipols[i], ipol_type.len)){
-            tmpipol = ipols[i];
+            tmpipol = i;
             break;
         }
     }
@@ -231,7 +224,7 @@ void fg_tape_signal_set_dump(FGTapeSignalSet *self, uint8_t level)
         for(int j = 0; j < level; j++) putchar('\t');
         printf("%s - %s\n",
             self->names[i],
-            fg_tape_signal_ipol_pretty(self->ipol_types[i])
+            pretty_ipols[self->ipol_types[i]]
         );
     }
 }
@@ -406,9 +399,8 @@ void fg_tape_free(FGTape *self)
 }
 
 /**
- * Searchs for a FGTapeSignal signal descriptor(array + index in array) matching
- * "name"
- *
+ * Searchs for a FGTapeSignal signal descriptor(that can be used on a record
+ * to get its value) matching "name"
  *
  */
 bool fg_tape_get_signal(FGTape *self, const char *name, FGTapeSignal *signal)
@@ -533,18 +525,18 @@ bool fg_tape_get_keyframes_for(FGTape *self, double time, FGTapeRecord **k1, FGT
 
     if ( fg_tape_time_within(self, time, SHORT_TERM)) { //Time is within short_term bounds
         return fg_tape_get_keyframes_from_term(self, time, SHORT_TERM, k1, k2);
-    } else if (self->records[MID_TERM].record_count ) { //Time is NOT within short_term
-        if ( fg_tape_time_inbetween(self, time, SHORT_TERM, MID_TERM)){ //Time is between medium_term last frame and short term first frame
-            *k1 = fg_tape_last(self, MID_TERM);
+    } else if (self->records[MEDIUM_TERM].record_count ) { //Time is NOT within short_term
+        if ( fg_tape_time_inbetween(self, time, SHORT_TERM, MEDIUM_TERM)){ //Time is between medium_term last frame and short term first frame
+            *k1 = fg_tape_last(self, MEDIUM_TERM);
             *k2 = fg_tape_first(self, SHORT_TERM);
             return true;
         } else { //Time is at least before medium_term last frame
-            if (fg_tape_time_within(self, time, MID_TERM)) { //Time is within medium term bounds
-                return fg_tape_get_keyframes_from_term(self, time, MID_TERM, k1, k2);
+            if (fg_tape_time_within(self, time, MEDIUM_TERM)) { //Time is within medium term bounds
+                return fg_tape_get_keyframes_from_term(self, time, MEDIUM_TERM, k1, k2);
             } else if(self->records[LONG_TERM].record_count){ //Time is strictly before first frame of medium_term
-                if (fg_tape_time_inbetween(self, time, MID_TERM, LONG_TERM)){ //Time is between first frame of medium_term and last frame of long_term
+                if (fg_tape_time_inbetween(self, time, MEDIUM_TERM, LONG_TERM)){ //Time is between first frame of medium_term and last frame of long_term
                     *k1 = fg_tape_last(self, LONG_TERM);
-                    *k2 = fg_tape_first(self, MID_TERM);
+                    *k2 = fg_tape_first(self, MEDIUM_TERM);
                 } else {
                     if (fg_tape_time_within(self, time, LONG_TERM)) { //Time is within long_term bounds
                         return fg_tape_get_keyframes_from_term(self, time, LONG_TERM, k1, k2);
@@ -555,7 +547,7 @@ bool fg_tape_get_keyframes_for(FGTape *self, double time, FGTapeRecord **k1, FGT
                     }
                 }
             } else { //Time is before the first frame of medium term AND there is no long term to search into
-                *k1 = fg_tape_first(self, MID_TERM);
+                *k1 = fg_tape_first(self, MEDIUM_TERM);
                 *k2 = NULL;
                 return true;
             }
@@ -569,15 +561,15 @@ bool fg_tape_get_keyframes_for(FGTape *self, double time, FGTapeRecord **k1, FGT
     return false;
 }
 
-static double weighting(uint8_t interpolation, double ratio, double v1, double v2)
+static double weighting(IpolType interpolation, double ratio, double v1, double v2)
 {
 
   //  printf("Doing %s interpolation between %f and %f\n", pretty_ipols[interpolation], v1, v2);
     switch(interpolation){
-      case IPOL_LINEAR:
+      case IPLinear:
           return v1 + ratio*(v2-v1);
 
-      case IPOL_ANGULAR_DEG:
+      case IPAngularDeg:
       {
           // special handling of angular data
           double tmp = v2 - v1;
@@ -588,7 +580,7 @@ static double weighting(uint8_t interpolation, double ratio, double v1, double v
           return v1 + tmp * ratio;
       }
 
-      case IPOL_ANGULAR_RAD:
+      case IPAngularRad:
       {
           // special handling of angular data
           double tmp = v2 - v1;
@@ -599,7 +591,7 @@ static double weighting(uint8_t interpolation, double ratio, double v1, double v
           return v1 + tmp * ratio;
       }
 
-    //          case IPOL_DISCRETE:
+      case IPDiscrete:
           // fall through
       default:
           return v2;
@@ -613,7 +605,7 @@ static double weighting(uint8_t interpolation, double ratio, double v1, double v
  * other value will be in between
  *
  */
-void fg_tape_interpolate_values(uint8_t type, uint8_t itype, double ratio, void *leftbound, void *rightbound, void *destination)
+void fg_tape_interpolate_values(SignalType type, IpolType itype, double ratio, void *leftbound, void *rightbound, void *destination)
 {
 //    printf("%s: type: %s, itype: %s\n",__FUNCTION__, pretty_kinds[type], pretty_ipols[itype]);
         switch(type){

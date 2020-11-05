@@ -3,10 +3,13 @@
 
 #include "sg-file.h"
 
-#define IPOL_LINEAR 0
-#define IPOL_ANGULAR_DEG 1
-#define IPOL_ANGULAR_RAD 2
-#define NIPOLS 3
+typedef enum{
+    IPDiscrete,
+    IPLinear,
+    IPAngularRad,
+    IPAngularDeg,
+    NIpols
+}IpolType;
 
 typedef enum{
     TDouble,
@@ -25,7 +28,7 @@ typedef enum{
 #define RC_RAWDATA 3
 
 #define SHORT_TERM 0
-#define MID_TERM 1
+#define MEDIUM_TERM 1
 #define LONG_TERM 2
 #define NTERMS 3
 
