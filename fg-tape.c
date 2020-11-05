@@ -50,7 +50,7 @@ bool fg_tape_read_duration(FGTape *self, SGFile *file)
         return false;
     }
     self->duration = atof(cursor.str);
-
+    free(xml);
     return true;
 }
 
@@ -313,6 +313,7 @@ bool fg_tape_read_signals(FGTape *self, SGFile *file)
 
     for(int i = 0; i < self->signal_count; i++)
         fg_tape_read_signal(self, &cursor);
+    free(xml);
     return true;
 }
 

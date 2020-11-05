@@ -100,6 +100,7 @@ int main(int argc, char *argv[])
             ebuff.engine1 ? "on" : "off"
         );
     }
+    fg_tape_free(tape);
 	exit(EXIT_SUCCESS);
 }
 
