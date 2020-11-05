@@ -636,7 +636,7 @@ void fg_tape_interpolate_values(SignalType type, IpolType itype, double ratio, v
         }
 }
 
-void fg_tape_get_data_at(FGTape *self, double time, FGTapeSignal *signals, size_t nsignals, void *buffer)
+bool fg_tape_get_data_at(FGTape *self, double time, FGTapeSignal *signals, size_t nsignals, void *buffer)
 {
     bool rv;
     FGTapeRecord *k1, *k2;
@@ -651,7 +651,7 @@ void fg_tape_get_data_at(FGTape *self, double time, FGTapeSignal *signals, size_
     rv = fg_tape_get_keyframes_for(self, time, &k1, &k2);
     if(!rv){
         printf("Couldn't get keyframes for time %f\n",time);
-        return;
+        return false;
     }
 
     ratio = 1.0;
@@ -681,5 +681,7 @@ void fg_tape_get_data_at(FGTape *self, double time, FGTapeSignal *signals, size_
         fg_tape_interpolate_values(signal->type, self->signals[signal->type].ipol_types[signal->idx], ratio, v2, v1, buffer_cursor);
         buffer_cursor += types_sizes[signal->type];
     }
-
+    if(time > self->duration)
+        return false;
+    return true;
 }
