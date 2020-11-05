@@ -81,5 +81,7 @@ void *fg_tape_get_value_ptr(FGTape *self, FGTapeRecord *record, uint8_t kind, si
 //void fg_tape_get_for(FGTape *self, double seconds);
 bool fg_tape_get_keyframes_for(FGTape *self, double time, FGTapeRecord **k1, FGTapeRecord **k2);
 
+void fg_tape_get_data_at(FGTape *self, double time, FGTapeSignal *signals, size_t nsignals, void *buffer);
+
 void fg_tape_dump(FGTape *self);
 #endif /* FG_TAPE_H */

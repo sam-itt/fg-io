@@ -4,6 +4,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <strings.h>
+#include <math.h>
 
 #include "fg-tape.h"
 #include "sg-file.h"
@@ -582,4 +583,124 @@ bool fg_tape_get_keyframes_for(FGTape *self, double time, FGTapeRecord **k1, FGT
     return false;
 }
 
+static double weighting(uint8_t interpolation, double ratio, double v1, double v2)
+{
 
+  //  printf("Doing %s interpolation between %f and %f\n", pretty_ipols[interpolation], v1, v2);
+    switch(interpolation){
+      case IPOL_LINEAR:
+          return v1 + ratio*(v2-v1);
+
+      case IPOL_ANGULAR_DEG:
+      {
+          // special handling of angular data
+          double tmp = v2 - v1;
+          if ( tmp > 180 )
+              tmp -= 360;
+          else if ( tmp < -180 )
+              tmp += 360;
+          return v1 + tmp * ratio;
+      }
+
+      case IPOL_ANGULAR_RAD:
+      {
+          // special handling of angular data
+          double tmp = v2 - v1;
+          if ( tmp > M_PI )
+              tmp -= (M_PI * 2.0);
+          else if ( tmp < -M_PI )
+              tmp += (M_PI * 2.0);
+          return v1 + tmp * ratio;
+      }
+
+    //          case IPOL_DISCRETE:
+          // fall through
+      default:
+          return v2;
+    }
+}
+
+/**
+ * Will interpolate between leftbound and rightboud a number that is
+ * greater than or equal leftbound and lower than or equal rightbound
+ * depending on ratio. 0.0 being leftbound, 1.0 being rightbound, any
+ * other value will be in between
+ *
+ */
+void fg_tape_interpolate_values(uint8_t type, uint8_t itype, double ratio, void *leftbound, void *rightbound, void *destination)
+{
+        switch(type){
+            case KDOUBLE:
+                *((double*)(destination)) = leftbound ?
+                    weighting(itype, ratio, *((double*)leftbound), *((double*)rightbound))
+                    : *((double*)rightbound);
+                break;
+            case KFLOAT:
+                *((float*)(destination)) = leftbound ?
+                    weighting(itype, ratio, *((float*)leftbound), *((float*)rightbound))
+                    : *((float*)rightbound);
+                break;
+            /*There is no real interpolation for anything other than floats/doubles
+             * in original FG's code so leave it at that */
+            case KINT:
+                *((int *)destination) = *((int *)rightbound);
+                break;
+            case KINT16:
+                *((short int *)destination) = *((short int *)rightbound);
+                break;
+            case KINT8:
+                *((signed char *)destination) = *((signed char *)rightbound);
+                break;
+            case KBOOL:
+                *((bool*)destination) = *((bool *)rightbound);
+                break;
+        }
+}
+
+void fg_tape_get_data_at(FGTape *self, double time, FGTapeSignal *signals, size_t nsignals, void *buffer)
+{
+    bool rv;
+    FGTapeRecord *k1, *k2;
+    void *buffer_cursor;
+    void *v1, *v2;
+    double ratio;
+
+    /* k1: value just after time, k2, previous keyframe:
+     * time->
+     * ...k2...t...k1
+     * */
+    rv = fg_tape_get_keyframes_for(self, time, &k1, &k2);
+    if(!rv){
+        printf("Couldn't get keyframes for time %f\n",time);
+        return;
+    }
+
+    ratio = 1.0;
+    if(k2){
+        double NextSimTime = k1->sim_time;
+        double LastSimTime = k2->sim_time;
+        double Numerator = time - LastSimTime;
+        double dt = NextSimTime - LastSimTime;
+        // avoid divide by zero and other quirks
+        if ((Numerator > 0.0)&&(dt != 0.0)){
+              ratio = Numerator / dt;
+              if (ratio > 1.0)
+                  ratio = 1.0;
+        }
+    }
+
+    buffer_cursor = buffer;
+    size_t stride;
+    //for(FGTapeSignal *signal = signals[0]; signal; signal++){
+    for(int i = 0; i < nsignals; i++){
+        FGTapeSignal *signal = &signals[i];
+        v1 = fg_tape_get_value_ptr(self, k1, signal->type, signal->idx);
+        if(k2)
+            v2 = fg_tape_get_value_ptr(self, k2, signal->type, signal->idx);
+        else
+            v2 = NULL;
+        fg_tape_interpolate_values(signal->type, self->signals[signal->type].ipol_types[signal->idx], ratio, v2, v1, buffer_cursor);
+        buffer_cursor += kind_sizes[signal->type];
+    }
+
+}
