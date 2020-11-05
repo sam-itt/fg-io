@@ -374,19 +374,6 @@ FGTape *fg_tape_init_from_file(FGTape *self, const char *filename)
             break;
     }
 
-#if 0
-
-    FGTapeRecord *first, *last;
-    first = fg_tape_get_record(self, 0);
-    last = fg_tape_get_record(self, self->record_count-1);
-    double sim_duration = last->sim_time - first->sim_time;
-//    self->duration //seconds
-    printf("first->sim_time: %f, last->sim_time: %f\n", first->sim_time, last->sim_time);
-    printf("sim_duration: %f, duration(seconds): %f\n",sim_duration,self->duration);
-    self->sec2sim = sim_duration / self->duration;
-    self->first_stamp = first->sim_time;
-
-#endif
     rv = self;
 out:
     sg_file_close(file);
@@ -437,6 +424,13 @@ bool fg_tape_get_signal(FGTape *self, const char *name, FGTapeSignal *signal)
             if(!strcmp(kind->names[j], name)){
                 signal->type = kinds[i];
                 signal->idx = j;
+
+                signal->offset = 0;
+                for(int k = 0; k < i; k++)
+                    signal->offset += kind_sizes[k]*self->signals[k].count;
+                if(i != KBOOL)
+                    signal->offset += kind_sizes[i]*signal->idx;
+                printf("signal %s type %s idx %d is offset %d\n",name, pretty_kinds[i], j, signal->offset);
                 return true;
             }
         }
@@ -444,21 +438,16 @@ bool fg_tape_get_signal(FGTape *self, const char *name, FGTapeSignal *signal)
     return false;
 }
 
-/*TODO: Take signal as param?*/
-void *fg_tape_get_value_ptr(FGTape *self, FGTapeRecord *record, uint8_t kind, size_t idx)
+void *fg_tape_record_get_signal_value_ptr(FGTapeRecord *self, FGTapeSignal *signal)
 {
     void *rv;
     static bool vtrue = true;
     static bool vfalse = false;
 
-    rv = record->data;
-    for(int i = 0; i < kind; i++)
-        rv += kind_sizes[i]*self->signals[kinds[i]].count;
-    if(kind != KBOOL){
-        rv += kind_sizes[kind]*idx;
-    }else{
-        int byte_idx = idx/8;
-        int local_bit_idx = idx - byte_idx*8;
+    rv = self->data + signal->offset;
+    if(signal->type == KBOOL){
+        int byte_idx = signal->idx/8;
+        int local_bit_idx = signal->idx - byte_idx*8;
         bool value;
 
         rv += sizeof(unsigned char)*byte_idx;
@@ -472,7 +461,6 @@ void *fg_tape_get_value_ptr(FGTape *self, FGTapeRecord *record, uint8_t kind, si
 
     return rv;
 }
-
 
 static inline bool fg_tape_time_within(FGTape *self, double time, uint8_t term)
 {
@@ -629,6 +617,7 @@ static double weighting(uint8_t interpolation, double ratio, double v1, double v
  */
 void fg_tape_interpolate_values(uint8_t type, uint8_t itype, double ratio, void *leftbound, void *rightbound, void *destination)
 {
+//    printf("%s: type: %s, itype: %s\n",__FUNCTION__, pretty_kinds[type], pretty_ipols[itype]);
         switch(type){
             case KDOUBLE:
                 *((double*)(destination)) = leftbound ?
@@ -694,9 +683,9 @@ void fg_tape_get_data_at(FGTape *self, double time, FGTapeSignal *signals, size_
     //for(FGTapeSignal *signal = signals[0]; signal; signal++){
     for(int i = 0; i < nsignals; i++){
         FGTapeSignal *signal = &signals[i];
-        v1 = fg_tape_get_value_ptr(self, k1, signal->type, signal->idx);
+        v1 = fg_tape_record_get_signal_value_ptr(k1, signal);
         if(k2)
-            v2 = fg_tape_get_value_ptr(self, k2, signal->type, signal->idx);
+            v2 = fg_tape_record_get_signal_value_ptr(k2, signal);
         else
             v2 = NULL;
         fg_tape_interpolate_values(signal->type, self->signals[signal->type].ipol_types[signal->idx], ratio, v2, v1, buffer_cursor);

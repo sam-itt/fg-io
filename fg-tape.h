@@ -59,6 +59,7 @@ typedef struct{
 typedef struct{
     size_t idx;
     uint8_t type;
+    size_t offset;
 }FGTapeSignal;
 
 typedef struct{
@@ -66,7 +67,7 @@ typedef struct{
     uint8_t data[];
 }FGTapeRecord;
 
-#define fg_tape_get_value(self, record, __type, signal) (*(__type *)fg_tape_get_value_ptr(self, record, (signal)->type, (signal)->idx))
+#define fg_tape_record_get_signal_value(self, __type, signal) (*(__type *)fg_tape_record_get_signal_value_ptr((self), (signal))
 #define fg_tape_get_record(self, term, idx) ((FGTapeRecord*)((self)->records[(term)].data + (self)->record_size*(idx)))
 #define fg_tape_first(self, term) fg_tape_get_record(self, term, 0)
 #define fg_tape_last(self, term) fg_tape_get_record(self, term, (self)->records[(term)].record_count-1)
@@ -76,7 +77,6 @@ FGTape *fg_tape_new_from_file(const char *filename);
 void fg_tape_free(FGTape *self);
 
 bool fg_tape_get_signal(FGTape *self, const char *name, FGTapeSignal *signal);
-void *fg_tape_get_value_ptr(FGTape *self, FGTapeRecord *record, uint8_t kind, size_t idx);
 
 //void fg_tape_get_for(FGTape *self, double seconds);
 bool fg_tape_get_keyframes_for(FGTape *self, double time, FGTapeRecord **k1, FGTapeRecord **k2);

@@ -11,7 +11,7 @@ static char *pos_signals[] = {
     "/position[0]/latitude-deg[0]",
     "/position[0]/longitude-deg[0]",
     "/position[0]/altitude-ft[0]",
-    "position[0]/altitude-agl-ft[0]",
+    "/position[0]/altitude-agl-ft[0]",
     NULL
 };
 
