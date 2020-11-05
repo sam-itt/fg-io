@@ -10,9 +10,9 @@
 #include "sg-file.h"
 
 
-static uint8_t kinds[NKINDS] = {KDOUBLE,KFLOAT,KINT,KINT16,KINT8,KBOOL};
-static char *pretty_kinds[NKINDS] = {"double","float","int","int16","int8","bool"};
-static size_t kind_sizes[NKINDS] = {
+static uint8_t types[NTYPES] = {TDOUBLE,TFLOAT,TINT,TINT16,TINT8,TBOOL};
+static char *pretty_types[NTYPES] = {"double","float","int","int16","int8","bool"};
+static size_t types_sizes[NTYPES] = {
     sizeof(double), sizeof(float), sizeof(int),
     sizeof(short int), sizeof(signed char), sizeof(unsigned char)
 };
@@ -169,21 +169,20 @@ bool fg_tape_read_signal(FGTape *self, char **cursor)
         return false;
     }
 
-
-    FGTapeSignalKind *kind = NULL;
-    for(uint8_t i = 0; i < NKINDS; i++){
-        if(!strncmp(tmptype.str, pretty_kinds[i], tmptype.len)){
-            kind = &self->signals[kinds[i]];
+    FGTapeSignalSet *set = NULL;
+    for(uint8_t i = 0; i < NTYPES; i++){
+        if(!strncmp(tmptype.str, pretty_types[i], tmptype.len)){
+            set = &self->signals[types[i]];
         }
     }
-    if(!kind){
-        printf("Couldn't find a matching signal kind for read value %.*s",tmptype.len, tmptype.str);
+    if(!set){
+        printf("Couldn't find a matching signal type for read value %.*s",tmptype.len, tmptype.str);
         return false;
     }
 
-    kind->names[kind->count] =  strndup(prop.str, prop.len); //TODO: free me
-    kind->ipol_types[kind->count] = tmpipol;
-    kind->count++;
+    set->names[set->count] =  strndup(prop.str, prop.len); //TODO: free me
+    set->ipol_types[set->count] = tmpipol;
+    set->count++;
 
     *cursor = end;
     return true;
@@ -191,7 +190,7 @@ bool fg_tape_read_signal(FGTape *self, char **cursor)
 
 /* *
  * Use data from the xml to allocate enough space to hold
- * signals data of a given kind (double, float, ...)
+ * signals data of a given type (double, float, ...)
  *
  * self->count is set to 0 but names and ipol_types are allocated
  * to fit as many signals as declared in the file <type></type>
@@ -199,7 +198,7 @@ bool fg_tape_read_signal(FGTape *self, char **cursor)
  *
  * returns: Number of allocated signals or -1 on failure
  */
-int fg_tape_signal_kind_init(FGTapeSignalKind *self, const char *type, const char *xml)
+int fg_tape_signal_set_init(FGTapeSignalSet *self, const char *type, const char *xml)
 {
     int n_signals;
     XString cursor;
@@ -216,7 +215,7 @@ int fg_tape_signal_kind_init(FGTapeSignalKind *self, const char *type, const cha
     return n_signals;
 }
 
-void fg_tape_signal_kind_dispose(FGTapeSignalKind *self)
+void fg_tape_signal_set_dispose(FGTapeSignalSet *self)
 {
     for(int i = 0; i < self->count; i++){
         free(self->names[i]);
@@ -225,7 +224,7 @@ void fg_tape_signal_kind_dispose(FGTapeSignalKind *self)
     free(self->ipol_types);
 }
 
-void fg_tape_signal_kind_dump(FGTapeSignalKind *self, uint8_t level)
+void fg_tape_signal_set_dump(FGTapeSignalSet *self, uint8_t level)
 {
     int i;
 
@@ -250,19 +249,19 @@ void fg_tape_dump(FGTape *self)
     }
 
     printf("\tEach record has:\n");
-    for(int i = 0; i < NKINDS; i++){
+    for(int i = 0; i < NTYPES; i++){
         printf("\t\t%d %s\n",
-            self->signals[kinds[i]].count,
-            pretty_kinds[i]
+            self->signals[types[i]].count,
+            pretty_types[i]
         );
     }
 
-    for(int i = 0; i < NKINDS; i++){
-        if(self->signals[kinds[i]].count > 0){
-            printf("\t%s signals:\n", pretty_kinds[i]);
-            fg_tape_signal_kind_dump(&(self->signals[kinds[i]]), 2);
+    for(int i = 0; i < NTYPES; i++){
+        if(self->signals[types[i]].count > 0){
+            printf("\t%s signals:\n", pretty_types[i]);
+            fg_tape_signal_set_dump(&(self->signals[types[i]]), 2);
         }else{
-            printf("\t%s signals: None\n", pretty_kinds[i]);
+            printf("\t%s signals: None\n", pretty_types[i]);
         }
     }
 
@@ -295,11 +294,11 @@ bool fg_tape_read_signals(FGTape *self, SGFile *file)
     sg_file_get_payload(file, &container, (uint8_t**)&xml);
     end = xml + container.size;
 
-    int count[NKINDS];
-    for(int i = 0; i < NKINDS; i++){
-        count[i] = fg_tape_signal_kind_init(
-            &(self->signals[kinds[i]]), /*Might as well use 'i' direcly?*/
-            pretty_kinds[i],
+    int count[NTYPES];
+    for(int i = 0; i < NTYPES; i++){
+        count[i] = fg_tape_signal_set_init(
+            &(self->signals[types[i]]), /*Might as well use 'i' direcly?*/
+            pretty_types[i],
             xml
         );
         self->signal_count += count[i] < 0 ? 0 : count[i];
@@ -397,8 +396,8 @@ FGTape *fg_tape_new_from_file(const char *filename)
 
 void fg_tape_free(FGTape *self)
 {
-    for(int i = 0; i < NKINDS; i++)
-        fg_tape_signal_kind_dispose(&self->signals[i]);
+    for(int i = 0; i < NTYPES; i++)
+        fg_tape_signal_set_dispose(&self->signals[i]);
 
     for(int i = 0; i < NTERMS; i++){
         if(self->records[i].data)
@@ -416,21 +415,21 @@ void fg_tape_free(FGTape *self)
 bool fg_tape_get_signal(FGTape *self, const char *name, FGTapeSignal *signal)
 {
     int i;
-    FGTapeSignalKind *kind;
+    FGTapeSignalSet *type_set;
 
-    for(int i = 0; i < NKINDS; i++){
-        kind = &self->signals[kinds[i]];
-        for(int j = 0; j < kind->count; j++){
-            if(!strcmp(kind->names[j], name)){
-                signal->type = kinds[i];
+    for(int i = 0; i < NTYPES; i++){
+        type_set = &self->signals[types[i]];
+        for(int j = 0; j < type_set->count; j++){
+            if(!strcmp(type_set->names[j], name)){
+                signal->type = types[i];
                 signal->idx = j;
 
                 signal->offset = 0;
                 for(int k = 0; k < i; k++)
-                    signal->offset += kind_sizes[k]*self->signals[k].count;
-                if(i != KBOOL)
-                    signal->offset += kind_sizes[i]*signal->idx;
-                printf("signal %s type %s idx %d is offset %d\n",name, pretty_kinds[i], j, signal->offset);
+                    signal->offset += types_sizes[k]*self->signals[k].count;
+                if(i != TBOOL)
+                    signal->offset += types_sizes[i]*signal->idx;
+                printf("signal %s type %s idx %d is offset %d\n",name, pretty_types[i], j, signal->offset);
                 return true;
             }
         }
@@ -445,7 +444,7 @@ void *fg_tape_record_get_signal_value_ptr(FGTapeRecord *self, FGTapeSignal *sign
     static bool vfalse = false;
 
     rv = self->data + signal->offset;
-    if(signal->type == KBOOL){
+    if(signal->type == TBOOL){
         int byte_idx = signal->idx/8;
         int local_bit_idx = signal->idx - byte_idx*8;
         bool value;
@@ -619,28 +618,28 @@ void fg_tape_interpolate_values(uint8_t type, uint8_t itype, double ratio, void 
 {
 //    printf("%s: type: %s, itype: %s\n",__FUNCTION__, pretty_kinds[type], pretty_ipols[itype]);
         switch(type){
-            case KDOUBLE:
+            case TDOUBLE:
                 *((double*)(destination)) = leftbound ?
                     weighting(itype, ratio, *((double*)leftbound), *((double*)rightbound))
                     : *((double*)rightbound);
                 break;
-            case KFLOAT:
+            case TFLOAT:
                 *((float*)(destination)) = leftbound ?
                     weighting(itype, ratio, *((float*)leftbound), *((float*)rightbound))
                     : *((float*)rightbound);
                 break;
             /*There is no real interpolation for anything other than floats/doubles
              * in original FG's code so leave it at that */
-            case KINT:
+            case TINT:
                 *((int *)destination) = *((int *)rightbound);
                 break;
-            case KINT16:
+            case TINT16:
                 *((short int *)destination) = *((short int *)rightbound);
                 break;
-            case KINT8:
+            case TINT8:
                 *((signed char *)destination) = *((signed char *)rightbound);
                 break;
-            case KBOOL:
+            case TBOOL:
                 *((bool*)destination) = *((bool *)rightbound);
                 break;
         }
@@ -689,7 +688,7 @@ void fg_tape_get_data_at(FGTape *self, double time, FGTapeSignal *signals, size_
         else
             v2 = NULL;
         fg_tape_interpolate_values(signal->type, self->signals[signal->type].ipol_types[signal->idx], ratio, v2, v1, buffer_cursor);
-        buffer_cursor += kind_sizes[signal->type];
+        buffer_cursor += types_sizes[signal->type];
     }
 
 }

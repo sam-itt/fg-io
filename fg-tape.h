@@ -8,13 +8,13 @@
 #define IPOL_ANGULAR_RAD 2
 #define NIPOLS 3
 
-#define KDOUBLE 0
-#define KFLOAT 1
-#define KINT 2
-#define KINT16 3
-#define KINT8 4
-#define KBOOL 5
-#define NKINDS 6
+#define TDOUBLE 0
+#define TFLOAT 1
+#define TINT 2
+#define TINT16 3
+#define TINT8 4
+#define TBOOL 5
+#define NTYPES 6
 
 #define RC_INVALID -1
 #define RC_HEADER 0
@@ -35,7 +35,7 @@ typedef struct{
      * NOT availalbe/allocated space
      */
     size_t count;
-}FGTapeSignalKind;
+}FGTapeSignalSet;
 
 typedef struct{
     uint8_t *data;
@@ -50,7 +50,10 @@ typedef struct{
 
     size_t record_size;
 
-    FGTapeSignalKind signals[NKINDS];
+    /*All the signals that can be found in this
+     * tape's records, arranged in sets as per their type
+     * (i.e all double signals, all float signals, ...)*/
+    FGTapeSignalSet signals[NTYPES];
     size_t signal_count;
 
     FGTapeRecordSet records[NTERMS];
