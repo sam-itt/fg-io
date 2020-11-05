@@ -636,7 +636,7 @@ void fg_tape_interpolate_values(SignalType type, IpolType itype, double ratio, v
         }
 }
 
-bool fg_tape_get_data_at(FGTape *self, double time, FGTapeSignal *signals, size_t nsignals, void *buffer)
+bool fg_tape_get_data_at(FGTape *self, double time, size_t nsignals, FGTapeSignal *signals, void *buffer)
 {
     bool rv;
     FGTapeRecord *k1, *k2;

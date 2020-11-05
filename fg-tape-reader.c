@@ -86,43 +86,20 @@ int main(int argc, char *argv[])
     printf("Engine1: %d - %d\n",engine_running[1].idx, engine_running[1].type);
 
     fg_tape_dump(tape);
-#if 0
-    for(int i = 0; i < tape->record_count; i++){
-        rec = (FGTapeRecord*)(tape->data + tape->record_size*i);
-        printf("%x: sim_time: %f, latitude: %f, longitude: %f, engines 0: %s, 1: %s\n",
-            0xA423+i,
-            rec->sim_time,
-            fg_tape_get_value(tape, rec, double, &latitude),
-            fg_tape_get_value(tape, rec, double, &longitude),
-            fg_tape_get_value(tape, rec, bool, &engine0) ? "on" : "off",
-            fg_tape_get_value(tape, rec, bool, &engine1) ? "on" : "off"
-        );
-    }
-#endif
-#if 1
+
     bool rv2;
     FGTapeRecord *first, *second;
     for(double i = 0; i < tape->duration; i += 10){
-#if 0
-        rv2 = fg_tape_get_keyframes_for(tape, i, &first, &second);
-        printf("Found time=%f to be between records t=%f and t=%f\n",
-            i,
-            first->sim_time,
-            second ? second->sim_time : -1
-        );
-#endif
-        fg_tape_get_data_at(tape, i, location, 4, &buff);
-        fg_tape_get_data_at(tape, i, attitude, 3, &buf2);
-        fg_tape_get_data_at(tape, i, engine_running, 2, &ebuff);
+        rv2 = fg_tape_get_data_at(tape, i, 4, location, &buff);
+        fg_tape_get_data_at(tape, i, 3, attitude, &buf2);
+        fg_tape_get_data_at(tape, i, 2, engine_running, &ebuff);
         printf("For time %f, lat,lon,alt - roll,pitch,heading is: %f,%f,%f - %f,%f,%f. Engine0: %s Engine1: %s\n",i,
             buff.latitude,buff.longitude, buff.altitude,
             buf2.roll, buf2.pitch, buf2.heading,
             ebuff.engine0 ? "on" : "off",
             ebuff.engine1 ? "on" : "off"
         );
-//        exit(0);
     }
-#endif
 	exit(EXIT_SUCCESS);
 }
 
