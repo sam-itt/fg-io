@@ -8,13 +8,15 @@
 #define IPOL_ANGULAR_RAD 2
 #define NIPOLS 3
 
-#define TDOUBLE 0
-#define TFLOAT 1
-#define TINT 2
-#define TINT16 3
-#define TINT8 4
-#define TBOOL 5
-#define NTYPES 6
+typedef enum{
+    TDouble,
+    TFloat,
+    TInt,
+    TInt16,
+    TIn8,
+    TBool,
+    NTypes
+}SignalType;
 
 #define RC_INVALID -1
 #define RC_HEADER 0
@@ -53,7 +55,7 @@ typedef struct{
     /*All the signals that can be found in this
      * tape's records, arranged in sets as per their type
      * (i.e all double signals, all float signals, ...)*/
-    FGTapeSignalSet signals[NTYPES];
+    FGTapeSignalSet signals[NTypes];
     size_t signal_count;
 
     FGTapeRecordSet records[NTERMS];
