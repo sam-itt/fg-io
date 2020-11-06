@@ -1,9 +1,9 @@
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include <stdint.h>
 #include <ctype.h>
-#include <strings.h>
+#include <string.h>
+#include <stdarg.h>
 #include <math.h>
 
 #include "fg-tape.h"
@@ -415,6 +415,7 @@ bool fg_tape_get_signal(FGTape *self, const char *name, FGTapeSignal *signal)
             if(!strcmp(type_set->names[j], name)){
                 signal->type = i;
                 signal->idx = j;
+                signal->interpolation = type_set->ipol_types[j];
 
                 signal->offset = 0;
                 for(int k = 0; k < i; k++)
@@ -634,55 +635,77 @@ void fg_tape_interpolate_values(SignalType type, IpolType itype, double ratio, v
             case TBool:
                 *((bool*)destination) = *((bool *)rightbound);
                 break;
+            case NTypes: //Fall through and make the compiler happy
+            default:
+                break;
         }
 }
 
-bool fg_tape_get_data_at(FGTape *self, double time, size_t nsignals, FGTapeSignal *signals, void *buffer)
+/* Get a cursor for a given time in the tape (between 0 and tape->duration)
+ *
+ * Returns -1 on error, 1 until the end of tape hasn't
+ * been reached, 0 otherwise
+ */
+int fg_tape_record_set_cursor(FGTape *self, double time, FGTapeCursor *cursor)
 {
     bool rv;
-    FGTapeRecord *k1, *k2;
-    void *buffer_cursor;
-    void *v1, *v2;
-    double ratio;
 
     /* k1: value just after time, k2, previous keyframe:
      * time->
      * ...k2...t...k1
      * */
-    rv = fg_tape_get_keyframes_for(self, time, &k1, &k2);
+    rv = fg_tape_get_keyframes_for(self, time, &cursor->k1, &cursor->k2);
     if(!rv){
-        printf("Couldn't get keyframes for time %f\n",time);
-        return false;
+        printf("Couldn't set cursor for time %f\n",time);
+        return -1;
     }
-
-    ratio = 1.0;
-    if(k2){
-        double NextSimTime = k1->sim_time;
-        double LastSimTime = k2->sim_time;
+    cursor->ratio = 1.0;
+    if(cursor->k2){
+        double NextSimTime = cursor->k1->sim_time;
+        double LastSimTime = cursor->k2->sim_time;
         double Numerator = time - LastSimTime;
         double dt = NextSimTime - LastSimTime;
         // avoid divide by zero and other quirks
         if ((Numerator > 0.0)&&(dt != 0.0)){
-              ratio = Numerator / dt;
-              if (ratio > 1.0)
-                  ratio = 1.0;
+              cursor->ratio = Numerator / dt;
+              if (cursor->ratio > 1.0)
+                  cursor->ratio = 1.0;
         }
     }
+    if(time > self->duration)
+        return 0;
+
+    return 1;
+}
+
+bool fg_cursor_get_signal_value(FGTapeCursor *self, size_t nsignals, FGTapeSignal *signals, void *buffer)
+{
+    void *buffer_cursor;
+    void *v1, *v2;
 
     buffer_cursor = buffer;
-    size_t stride;
 
     for(int i = 0; i < nsignals; i++){
         FGTapeSignal *signal = &signals[i];
-        v1 = fg_tape_record_get_signal_value_ptr(k1, signal);
-        if(k2)
-            v2 = fg_tape_record_get_signal_value_ptr(k2, signal);
+        v1 = fg_tape_record_get_signal_value_ptr(self->k1, signal);
+        if(self->k2)
+            v2 = fg_tape_record_get_signal_value_ptr(self->k2, signal);
         else
             v2 = NULL;
-        fg_tape_interpolate_values(signal->type, self->signals[signal->type].ipol_types[signal->idx], ratio, v2, v1, buffer_cursor);
+        fg_tape_interpolate_values(signal->type, signal->interpolation , self->ratio, v2, v1, buffer_cursor);
         buffer_cursor += types_sizes[signal->type];
     }
-    if(time > self->duration)
-        return false;
     return true;
+}
+
+
+int fg_tape_get_data_at(FGTape *self, double time, size_t nsignals, FGTapeSignal *signals, void *buffer)
+{
+    int rv;
+    FGTapeCursor cursor;
+
+    rv = fg_tape_record_set_cursor(self, time, &cursor);
+    if(rv >= 0)
+        fg_cursor_get_signal_value(&cursor, nsignals, signals, buffer);
+    return rv;
 }

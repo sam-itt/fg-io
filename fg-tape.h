@@ -67,6 +67,7 @@ typedef struct{
 typedef struct{
     size_t idx;
     uint8_t type;
+    IpolType interpolation;
     size_t offset;
 }FGTapeSignal;
 
@@ -74,6 +75,14 @@ typedef struct{
     double sim_time;
     uint8_t data[];
 }FGTapeRecord;
+
+typedef struct{
+    double ratio;
+    /*keyframes for time*/
+    FGTapeRecord *k1;
+    FGTapeRecord *k2;
+}FGTapeCursor;
+
 
 #define fg_tape_record_get_signal_value(self, __type, signal) (*(__type *)fg_tape_record_get_signal_value_ptr((self), (signal))
 #define fg_tape_get_record(self, term, idx) ((FGTapeRecord*)((self)->records[(term)].data + (self)->record_size*(idx)))
@@ -89,7 +98,9 @@ bool fg_tape_get_signal(FGTape *self, const char *name, FGTapeSignal *signal);
 //void fg_tape_get_for(FGTape *self, double seconds);
 bool fg_tape_get_keyframes_for(FGTape *self, double time, FGTapeRecord **k1, FGTapeRecord **k2);
 
-bool fg_tape_get_data_at(FGTape *self, double time, size_t nsignals, FGTapeSignal *signals, void *buffer);
+int fg_tape_record_set_cursor(FGTape *self, double time, FGTapeCursor *cursor);
+bool fg_cursor_get_signal_value(FGTapeCursor *self, size_t nsignals, FGTapeSignal *signals, void *buffer);
+int fg_tape_get_data_at(FGTape *self, double time, size_t nsignals, FGTapeSignal *signals, void *buffer);
 
 void fg_tape_dump(FGTape *self);
 #endif /* FG_TAPE_H */
