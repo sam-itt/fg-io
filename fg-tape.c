@@ -711,7 +711,7 @@ int fg_tape_get_cursor(FGTape *self, double time, FGTapeCursor *cursor)
     return 1;
 }
 
-bool fg_cursor_get_signal_value(FGTapeCursor *self, size_t nsignals, FGTapeSignal *signals, void *buffer)
+bool fg_tape_cursor_get_signal_value(FGTapeCursor *self, size_t nsignals, FGTapeSignal *signals, void *buffer)
 {
     void *buffer_cursor;
     void *v1, *v2;
@@ -739,6 +739,6 @@ int fg_tape_get_data_at(FGTape *self, double time, size_t nsignals, FGTapeSignal
 
     rv = fg_tape_get_cursor(self, time, &cursor);
     if(rv >= 0)
-        fg_cursor_get_signal_value(&cursor, nsignals, signals, buffer);
+        fg_tape_cursor_get_signal_value(&cursor, nsignals, signals, buffer);
     return rv;
 }

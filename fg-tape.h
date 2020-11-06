@@ -93,7 +93,7 @@ int fg_tape_get_signals(FGTape *self, FGTapeSignal *signals, ...);
 bool fg_tape_get_keyframes_for(FGTape *self, double time, FGTapeRecord **k1, FGTapeRecord **k2);
 
 int fg_tape_get_cursor(FGTape *self, double time, FGTapeCursor *cursor);
-bool fg_cursor_get_signal_value(FGTapeCursor *self, size_t nsignals, FGTapeSignal *signals, void *buffer);
+bool fg_tape_cursor_get_signal_value(FGTapeCursor *self, size_t nsignals, FGTapeSignal *signals, void *buffer);
 int fg_tape_get_data_at(FGTape *self, double time, size_t nsignals, FGTapeSignal *signals, void *buffer);
 
 void fg_tape_dump(FGTape *self);
