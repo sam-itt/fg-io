@@ -85,3 +85,17 @@ Build and run:
 ```sh
 $ make && ./test-tape
 ```
+
+# FlightGear Connector
+
+No documentation yet, code should be pretty self-explainatory. Works using
+standard FlightGear feature described [here](http://wiki.flightgear.org/Generic_protocol)
+
+## Building & running the sample
+
+The fg-connector-test.c sample code demonstrate features described above.
+It should build on any Unix having zlib (and dev headers) installed.
+Build and run:
+```sh
+$ make && ./test-connector
+```
