@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* Copyright (C) 2020 Samuel Cuella */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>

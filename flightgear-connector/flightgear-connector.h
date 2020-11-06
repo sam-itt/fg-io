@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* Copyright (C) 2020 Samuel Cuella */
+
 #ifndef FLIGHTGEAR_CONNECTOR_H
 #define FLIGHTGEAR_CONNECTOR_H
 

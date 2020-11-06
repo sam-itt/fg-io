@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* Copyright (C) 2020 Samuel Cuella */
+
 #ifndef SG_CONTAINER_FILE_H
 #define SG_CONTAINER_FILE_H
 
