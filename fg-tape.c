@@ -341,7 +341,7 @@ bool fg_tape_read_records(FGTape *self, FGTapeRecordSet *set, SGFile *file)
         return false;
     }
     set->record_count = container.size/self->record_size;
-    printf("Container should have %d records\n", set->record_count);
+    //printf("Container should have %d records\n", set->record_count);
 
     return true;
 }
@@ -455,7 +455,7 @@ bool fg_tape_get_signal(FGTape *self, const char *name, FGTapeSignal *signal)
                     signal->offset += types_sizes[k]*self->signals[k].count;
                 if(i != TBool)
                     signal->offset += types_sizes[i]*signal->idx;
-                printf("signal %s type %s idx %d is offset %d\n",name, pretty_types[i], j, signal->offset);
+                //printf("signal %s type %s idx %d is offset %d\n",name, pretty_types[i], j, signal->offset);
                 return true;
             }
         }
