@@ -679,7 +679,7 @@ void fg_tape_interpolate_values(SignalType type, IpolType itype, double ratio, v
  * Returns -1 on error, 1 until the end of tape hasn't
  * been reached, 0 otherwise
  */
-int fg_tape_record_set_cursor(FGTape *self, double time, FGTapeCursor *cursor)
+int fg_tape_get_cursor(FGTape *self, double time, FGTapeCursor *cursor)
 {
     bool rv;
 
@@ -737,7 +737,7 @@ int fg_tape_get_data_at(FGTape *self, double time, size_t nsignals, FGTapeSignal
     int rv;
     FGTapeCursor cursor;
 
-    rv = fg_tape_record_set_cursor(self, time, &cursor);
+    rv = fg_tape_get_cursor(self, time, &cursor);
     if(rv >= 0)
         fg_cursor_get_signal_value(&cursor, nsignals, signals, buffer);
     return rv;
