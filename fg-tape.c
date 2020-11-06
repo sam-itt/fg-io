@@ -400,8 +400,38 @@ void fg_tape_free(FGTape *self)
 }
 
 /**
+ * Takes a NULL-terminated list of signal names and fill signals with it.
+ * Signals must be a pointer to a location large enough to hold as many
+ * as passed-in signals. Stops on the first not-found signal
+ *
+ * Returns: Number of read signals
+ */
+int fg_tape_get_signals(FGTape *self, FGTapeSignal *signals, ...)
+{
+    int rv = 0;
+    va_list ap;
+    char *signal_name;
+    bool found;
+
+    va_start(ap, signals);
+    while((signal_name = va_arg(ap, char*))){
+        found = fg_tape_get_signal(self, signal_name, &signals[rv]);
+        if(!found){
+            printf("Couldn't get signal %s\n", signal_name);
+            break;
+        }
+        rv++;
+    }
+    va_end(ap);
+
+    return rv;
+}
+
+/**
  * Searchs for a FGTapeSignal signal descriptor(that can be used on a record
  * to get its value) matching "name"
+ *
+ * Returns: true if the signal is found, false otherwise
  *
  */
 bool fg_tape_get_signal(FGTape *self, const char *name, FGTapeSignal *signal)

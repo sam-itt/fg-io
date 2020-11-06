@@ -94,6 +94,7 @@ FGTape *fg_tape_new_from_file(const char *filename);
 void fg_tape_free(FGTape *self);
 
 bool fg_tape_get_signal(FGTape *self, const char *name, FGTapeSignal *signal);
+int fg_tape_get_signals(FGTape *self, FGTapeSignal *signals, ...);
 
 //void fg_tape_get_for(FGTape *self, double seconds);
 bool fg_tape_get_keyframes_for(FGTape *self, double time, FGTapeRecord **k1, FGTapeRecord **k2);
