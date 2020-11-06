@@ -9,6 +9,9 @@
 #include "fg-tape.h"
 #include "sg-file.h"
 
+#define fg_tape_get_record(self, term, idx) ((FGTapeRecord*)((self)->records[(term)].data + (self)->record_size*(idx)))
+#define fg_tape_first(self, term) fg_tape_get_record(self, term, 0)
+#define fg_tape_last(self, term) fg_tape_get_record(self, term, (self)->records[(term)].record_count-1)
 
 static char *pretty_types[NTypes] = {"double","float","int","int16","int8","bool"};
 static size_t types_sizes[NTypes] = {

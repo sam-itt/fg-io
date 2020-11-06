@@ -84,19 +84,12 @@ typedef struct{
 }FGTapeCursor;
 
 
-#define fg_tape_record_get_signal_value(self, __type, signal) (*(__type *)fg_tape_record_get_signal_value_ptr((self), (signal))
-#define fg_tape_get_record(self, term, idx) ((FGTapeRecord*)((self)->records[(term)].data + (self)->record_size*(idx)))
-#define fg_tape_first(self, term) fg_tape_get_record(self, term, 0)
-#define fg_tape_last(self, term) fg_tape_get_record(self, term, (self)->records[(term)].record_count-1)
-#define fg_tape_term_get_record(self, rset, idx) ((FGTapeRecord*)((rset)->data + (self)->record_size*(idx)))
-
 FGTape *fg_tape_new_from_file(const char *filename);
 void fg_tape_free(FGTape *self);
 
 bool fg_tape_get_signal(FGTape *self, const char *name, FGTapeSignal *signal);
 int fg_tape_get_signals(FGTape *self, FGTapeSignal *signals, ...);
 
-//void fg_tape_get_for(FGTape *self, double seconds);
 bool fg_tape_get_keyframes_for(FGTape *self, double time, FGTapeRecord **k1, FGTapeRecord **k2);
 
 int fg_tape_record_set_cursor(FGTape *self, double time, FGTapeCursor *cursor);
