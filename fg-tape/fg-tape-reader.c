@@ -38,6 +38,7 @@ int main(int argc, char *argv[])
     TmpBuffer buff;
     AttBuffer buf2;
     EngineRunningBuffer ebuff;
+    FGTapeCursor cursor;
     int found;
 
 
@@ -77,10 +78,11 @@ int main(int argc, char *argv[])
     fg_tape_dump(tape);
 
     FGTapeRecord *first, *second;
-    for(double i = 0; i < tape->duration; i += 10){
-        fg_tape_get_data_at(tape, i, 4, location_signals, &buff);
-        fg_tape_get_data_at(tape, i, 3, attitude_signals, &buf2);
-        fg_tape_get_data_at(tape, i, 2, engine_signals, &ebuff);
+    for(double i = 0; i < tape->duration; i += 1.0){
+        fg_tape_get_cursor(tape, i, &cursor);
+        fg_tape_cursor_get_signal_value(&cursor, 4, location_signals, &buff);
+        fg_tape_cursor_get_signal_value(&cursor, 3, attitude_signals, &buf2);
+        fg_tape_cursor_get_signal_value(&cursor, 2, engine_signals, &ebuff);
         printf("For time %f, lat,lon,alt - roll,pitch,heading is: %f,%f,%f - %f,%f,%f. Engine0: %s Engine1: %s\n",i,
             buff.latitude,buff.longitude, buff.altitude,
             buf2.roll, buf2.pitch, buf2.heading,
