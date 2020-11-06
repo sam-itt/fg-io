@@ -575,6 +575,7 @@ bool fg_tape_get_keyframes_for(FGTape *self, double time, FGTapeRecord **k1, FGT
                 if (fg_tape_time_inbetween(self, time, MEDIUM_TERM, LONG_TERM)){ //Time is between first frame of medium_term and last frame of long_term
                     *k1 = fg_tape_last(self, LONG_TERM);
                     *k2 = fg_tape_first(self, MEDIUM_TERM);
+                    return true;
                 } else {
                     if (fg_tape_time_within(self, time, LONG_TERM)) { //Time is within long_term bounds
                         return fg_tape_get_keyframes_from_term(self, time, LONG_TERM, k1, k2);
