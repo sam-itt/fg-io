@@ -1,0 +1,65 @@
+<?xml version="1.0"?>
+<PropertyList>
+
+ <generic>
+
+  <output>
+   <binary_mode>true</binary_mode>
+
+  <!-- note that chunk ordering/typing is critical here and needs to match the C struct below -->
+   <chunk>
+    <name>latitude</name>
+    <type>float</type>
+    <node>/position/latitude-deg</node>
+   </chunk>
+
+   <chunk>
+    <name>longitude</name>
+    <type>float</type>
+    <node>/position/longitude-deg</node>
+   </chunk>
+
+   <chunk>
+    <name>altitude</name>
+    <type>int</type>
+    <node>/position/altitude-ft</node>
+   </chunk>
+
+   <chunk>
+    <name>airspeed</name>
+    <type>int</type>
+    <node>/velocities/airspeed-kt</node>
+   </chunk>
+
+   <chunk>
+    <name>verticalspeed</name>
+    <type>float</type>
+    <node>/velocities/vertical-speed-fps</node>
+   </chunk>
+
+
+   <chunk>
+    <name>roll</name>
+    <type>float</type>
+    <node>/orientation/roll-deg</node>
+   </chunk>
+
+   <chunk>
+    <name>pitch</name>
+    <type>float</type>
+    <node>/orientation/pitch-deg</node>
+   </chunk>
+
+   <chunk>
+    <name>heading</name>
+    <type>float</type>
+    <node>/orientation/heading-deg</node>
+   </chunk>
+
+  <!-- any chunks added here, also need to be added to the C struct below -->
+
+  </output>
+
+ </generic>
+
+</PropertyList>
