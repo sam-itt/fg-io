@@ -309,8 +309,16 @@ bool fg_tape_read_signals(FGTape *self, SGFile *file)
                         sizeof(short int)     * count[3]                +
                         sizeof(signed char)   * count[4]                +
                         sizeof(unsigned char) * ((count[5]+7)/8); // 8 bools per byte
-
-
+    self->unaligned_record_size = self->record_size;
+#if 1
+    if(self->record_size % 4){ /**/
+        self->record_size = (self->record_size/4 +1)* 4;
+        printf("record_size of %d was not a multiple of 4, padded to %d (%d padding bytes)\n",
+            self->unaligned_record_size, self->record_size,
+            self->record_size - self->unaligned_record_size
+        );
+    }
+#endif
     cursor = strstr(xml, "<signals>");
     if(!cursor){
         printf("Couldn't find signal list in file xml descriptor, bailing out\n");
@@ -327,6 +335,7 @@ bool fg_tape_read_records(FGTape *self, FGTapeRecordSet *set, SGFile *file)
 {
     SGContainer container;
     bool rv;
+    uint8_t *tmpdata;
 
     rv = sg_file_read_next(file, &container);
     if(!rv){
@@ -338,12 +347,29 @@ bool fg_tape_read_records(FGTape *self, FGTapeRecordSet *set, SGFile *file)
         printf("Expecting RC_RAWDATA container(%d), got %d\n", RC_RAWDATA, container.type);
     }
 
-    rv = sg_file_get_payload(file, &container, &(set->data));
+    tmpdata = NULL;
+    rv = sg_file_get_payload(file, &container, &tmpdata);
     if(!rv){
         printf("Couldn't get payload, bailing out\n");
         return false;
     }
-    set->record_count = container.size/self->record_size;
+    set->record_count = container.size/self->unaligned_record_size;
+
+    if(self->unaligned_record_size != self->record_size){
+        set->data = calloc(set->record_count, self->record_size);
+        uint8_t *ptr = tmpdata;
+        for(int i = 0; i < set->record_count; i++){
+            memcpy(set->data + (self->record_size*i),
+                ptr,
+                self->unaligned_record_size
+            );
+            ptr += self->unaligned_record_size;
+        }
+        free(tmpdata);
+    }else{
+        set->data = tmpdata;
+    }
+
     //printf("Container should have %d records\n", set->record_count);
 
     return true;

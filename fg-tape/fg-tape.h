@@ -57,6 +57,7 @@ typedef struct{
     double sec2sim;
 
     size_t record_size;
+    size_t unaligned_record_size;
 
     /*All the signals that can be found in this
      * tape's records, arranged in sets as per their type
