@@ -1,7 +1,7 @@
 SRCDIR=.
 
 CC=gcc
-CFLAGS=-g3 -O0
+CFLAGS=-g3 -O0 -DDISABLE_ALIGN=0
 LDFLAGS=-lz
 EXEC=test-tape
 SRC= $(wildcard $(SRCDIR)/*.c)

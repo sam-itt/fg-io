@@ -310,7 +310,7 @@ bool fg_tape_read_signals(FGTape *self, SGFile *file)
                         sizeof(signed char)   * count[4]                +
                         sizeof(unsigned char) * ((count[5]+7)/8); // 8 bools per byte
     self->unaligned_record_size = self->record_size;
-#if 1
+#if !defined(DISABLE_ALIGN) || !DISABLE_ALIGN
     if(self->record_size % 4){ /**/
         self->record_size = (self->record_size/4 +1)* 4;
         printf("record_size of %d was not a multiple of 4, padded to %d (%d padding bytes)\n",
