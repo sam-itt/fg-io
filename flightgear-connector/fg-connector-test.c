@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
     printf("Waiting for first packet from FlightGear\n");
     printf("Be sure to:\n");
     printf("1. have basic_proto.xml in $FG_ROOT/Protocol\n");
-    printf("2. Run FlightGear(fgfs) with --generic=socket,out,5,LOCAL_IP,6798,udp,basic_proto\n");
+    printf("2. Run FlightGear(fgfs) with --generic=socket,out,5,LOCAL_IP,6789,udp,basic_proto\n");
     printf("REPLACE LOCAL_IP WITH THE IP OF THE LOCAL MACHINE\n");
     do{
         if(flightgear_connector_get_packet(fglink, &packet)){
