@@ -21,22 +21,9 @@
 
    <chunk>
     <name>altitude</name>
-    <type>int</type>
+    <type>float</type>
     <node>/position/altitude-ft</node>
    </chunk>
-
-   <chunk>
-    <name>airspeed</name>
-    <type>int</type>
-    <node>/velocities/airspeed-kt</node>
-   </chunk>
-
-   <chunk>
-    <name>verticalspeed</name>
-    <type>float</type>
-    <node>/velocities/vertical-speed-fps</node>
-   </chunk>
-
 
    <chunk>
     <name>roll</name>
@@ -54,6 +41,66 @@
     <name>heading</name>
     <type>float</type>
     <node>/orientation/heading-deg</node>
+   </chunk>
+
+   <chunk>
+    <name>side-slip-rad</name>
+    <type>float</type>
+    <node>/orientation/side-slip-rad</node>
+   </chunk>
+
+   <chunk>
+    <name>airspeed</name>
+    <type>float</type>
+    <node>/velocities/airspeed-kt</node>
+   </chunk>
+
+   <chunk>
+    <name>vertical-speed</name>
+    <type>float</type>
+    <node>/velocities/vertical-speed-fps</node>
+   </chunk>
+
+   <chunk>
+    <name>rpm</name>
+    <type>float</type>
+    <node>/engines[0]/engine[0]/rpm[0]</node>
+   </chunk>
+
+   <chunk>
+    <name>fuel-flow</name>
+    <type>float</type>
+    <node>/engines[0]/engine[0]/fuel-flow-gph[0]</node>
+  </chunk>
+
+   <chunk>
+    <name>oil-temp</name>
+    <type>float</type>
+    <node>/engines[0]/engine[0]/oil-temperature-degf[0]</node>
+   </chunk>
+
+   <chunk>
+     <name>oil-pressure</name>
+    <type>float</type>
+    <node>/engines[0]/engine[0]/oil-pressure-psi[0]</node>
+   </chunk>
+
+   <chunk>
+     <name>cht</name>
+    <type>float</type>
+    <node>/engines[0]/engine[0]/cht-degf[0]</node>
+   </chunk>
+
+   <chunk>
+     <name>fuel-pressure</name>
+    <type>float</type>
+    <node>/engines[0]/engine[0]/fuel-px-psi[0]</node>
+  </chunk>
+
+   <chunk>
+     <name>fuel-quantity</name>
+    <type>float</type>
+    <node>/consumables[0]/fuel[0]/tank[0]/level-gal_us[0]</node>
    </chunk>
 
   <!-- any chunks added here, also need to be added to the C struct below -->

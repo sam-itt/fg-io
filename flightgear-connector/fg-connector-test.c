@@ -23,13 +23,28 @@ int main(int argc, char *argv[])
     do{
         if(flightgear_connector_get_packet(fglink, &packet)){
             printf("Got packet:\n"
-                    "\tAltitude: %d\n"
-                    "\tAirspeed: %d\n"
-                    "\tVertial speed: %f\n"
-                    "\troll,pitch,heading: %f,%f,%f\n",
-                    packet.altitude, packet.airspeed,
-                    packet.vertical_speed,
-                    packet.roll,packet.pitch, packet.heading
+                "lat,lon,alt: %f, %f, %f\n"
+                "\troll,pitch,heading: %f,%f,%f\n"
+                "\tslip: %f\n"
+                "\tAirspeed: %f\n"
+                "\tVertial speed: %f\n"
+                "\trpm: %f\n"
+                "\tfuel flow: %f\n"
+                "\tCHT:%f\n"
+                "\tOil temp: %f px:%f\n"
+                "\tFuel px: %f\n"
+                "\tFuel qty: %f\n",
+                packet.latitude, packet.longitude, packet.altitude,
+                packet.roll,packet.pitch, packet.heading,
+                packet.side_slip,
+                packet.airspeed,
+                packet.vertical_speed,
+                packet.rpm,
+                packet.fuel_flow,
+                packet.cht,
+                packet.oil_temp, packet.oil_px,
+                packet.fuel_px,
+                packet.fuel_qty
             );
         }
     }while(1);

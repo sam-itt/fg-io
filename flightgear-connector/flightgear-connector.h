@@ -15,12 +15,23 @@
 typedef struct __attribute__((__packed__))  {
     float latitude;
     float longitude;
-    int altitude;
-    int airspeed;
-    float vertical_speed;
+    float altitude;
+
     float roll;
     float pitch;
     float heading;
+    float side_slip;
+
+    float airspeed;
+    float vertical_speed;
+
+    float rpm;
+    float fuel_flow;
+    float oil_temp;
+    float oil_px;
+    float cht;
+    float fuel_px;
+    float fuel_qty;
 }FlightgearPacket;
 
 typedef struct{

@@ -85,15 +85,27 @@ bool flightgear_connector_get_packet(FlightgearConnector *self, FlightgearPacket
     n = recvfrom(self->fd, &buffer, sizeof(FlightgearPacket), 0, NULL, NULL);
     if(n > 0){
         // populate structture
-        packet->airspeed = ntohl(buffer.airspeed);
-        packet->altitude = ntohl(buffer.altitude);
-        packet->heading = float_swap(buffer.heading);
-        packet->vertical_speed = float_swap(buffer.vertical_speed);
-        packet->vertical_speed *= 60.0; /*Flight gear gives a value un ft/s*/
         packet->latitude = float_swap(buffer.latitude);
         packet->longitude = float_swap(buffer.longitude);
-        packet->pitch = float_swap(buffer.pitch);
+        packet->altitude = float_swap(buffer.altitude);
+
         packet->roll = float_swap(buffer.roll);
+        packet->pitch = float_swap(buffer.pitch);
+        packet->heading = float_swap(buffer.heading);
+        packet->side_slip = float_swap(buffer.side_slip);
+
+        packet->airspeed = float_swap(buffer.airspeed);
+        packet->vertical_speed = float_swap(buffer.vertical_speed);
+
+        packet->rpm = float_swap(buffer.rpm);
+        packet->fuel_flow = float_swap(buffer.fuel_flow);
+        packet->oil_temp = float_swap(buffer.oil_temp);
+        packet->oil_px = float_swap(buffer.oil_px);
+        packet->cht = float_swap(buffer.cht);
+        packet->fuel_px = float_swap(buffer.fuel_px);
+        packet->fuel_qty = float_swap(buffer.fuel_qty);
+
+        packet->vertical_speed *= 60.0; /*Flight gear gives a value in ft/s*/
 #if 0
         // print out data
         printf("Airspeed %i, Altitude %i\n", packet->airspeed, packet->altitude);
