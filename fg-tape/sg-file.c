@@ -109,7 +109,7 @@ bool sg_file_get_payload(SGFile *self, SGContainer *container, uint8_t **payload
 
 void sg_container_dump(SGContainer *self)
 {
-    printf("SGContainer(%p): type: %d, start:%ld, size:%d\n",
+    printf("SGContainer(%p): type: %d, start:%ld, size:%zu\n",
         self,
         self->type,
         self->start_offset,

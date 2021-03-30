@@ -144,14 +144,14 @@ bool fg_tape_read_signal(FGTape *self, char **cursor)
     XString prop;
     _get_node_value(begin, "property", &prop);
     if(!prop.str){
-        printf("Couldn't find property name for current %.*s signal, bailing out\n", tmptype.len, tmptype.str);
+        printf("Couldn't find property name for current %.*s signal, bailing out\n", (uint32_t)tmptype.len, tmptype.str);
         return false;
     }
 
     XString ipol_type;
     _get_node_value(begin, "interpolation", &ipol_type);
     if(!ipol_type.str){
-        printf("Couldn't find interpolation for current  %.*s signal, bailing out\n", tmptype.len, tmptype.str);
+        printf("Couldn't find interpolation for current  %.*s signal, bailing out\n", (uint32_t)tmptype.len, tmptype.str);
         return false;
     }
 
@@ -163,7 +163,7 @@ bool fg_tape_read_signal(FGTape *self, char **cursor)
         }
     }
     if( tmpipol < 0){
-        printf("Unknown interpolation type: %.*s, bailing out\n", ipol_type.len, ipol_type.str);
+        printf("Unknown interpolation type: %.*s, bailing out\n", (uint32_t)ipol_type.len, ipol_type.str);
         return false;
     }
 
@@ -174,7 +174,7 @@ bool fg_tape_read_signal(FGTape *self, char **cursor)
         }
     }
     if(!set){
-        printf("Couldn't find a matching signal type for read value %.*s",tmptype.len, tmptype.str);
+        printf("Couldn't find a matching signal type for read value %.*s",(uint32_t)tmptype.len, tmptype.str);
         return false;
     }
 
@@ -240,15 +240,15 @@ void fg_tape_dump(FGTape *self)
 
     printf("FGTape(%p):\n",self);
     printf("\tDuration: %f\n",self->duration);
-    printf("\tRecord size(bytes): %d\n",self->record_size);
+    printf("\tRecord size(bytes): %zu\n",self->record_size);
     printf("\tNumber of records:\n");
     for(int i = 0; i < NTERMS; i++){
-        printf("\t%s term: %d\n",pretty_terms[i], self->records[i].record_count);
+        printf("\t%s term: %zu\n",pretty_terms[i], self->records[i].record_count);
     }
 
     printf("\tEach record has:\n");
     for(SignalType i = TDouble; i < NTypes; i++){
-        printf("\t\t%d %s\n",
+        printf("\t\t%zu %s\n",
             self->signals[i].count,
             pretty_types[i]
         );
@@ -264,7 +264,7 @@ void fg_tape_dump(FGTape *self)
     }
 
     for(int i = 0; i < NTERMS; i++){
-        printf("\tTerm %s goes from %f to %f sim_time (dt: %f) with %d records\n",
+        printf("\tTerm %s goes from %f to %f sim_time (dt: %f) with %zu records\n",
             pretty_terms[i],
             fg_tape_first(self, i)->sim_time,
             fg_tape_last(self, i)->sim_time,
@@ -313,7 +313,7 @@ bool fg_tape_read_signals(FGTape *self, SGFile *file)
 #if !defined(DISABLE_ALIGN) || !DISABLE_ALIGN
     if(self->record_size % 4){ /**/
         self->record_size = (self->record_size/4 +1)* 4;
-        printf("record_size of %d was not a multiple of 4, padded to %d (%d padding bytes)\n",
+        printf("record_size of %zu was not a multiple of 4, padded to %zu (%zu padding bytes)\n",
             self->unaligned_record_size, self->record_size,
             self->record_size - self->unaligned_record_size
         );
