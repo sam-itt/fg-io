@@ -69,11 +69,11 @@ int main(int argc, char *argv[])
     printf("Location: found %d out of %d signals\n",found,2);
 
 
-    printf("Longitude: %d - %d\n",location_signals[1].idx, location_signals[1].type);
-    printf("Latitude: %d - %d\n",location_signals[0].idx, location_signals[0].type);
-    printf("Roll: %d - %d\n",attitude_signals[0].idx, attitude_signals[0].type);
-    printf("Engine0: %d - %d\n",engine_signals[0].idx, engine_signals[0].type);
-    printf("Engine1: %d - %d\n",engine_signals[1].idx, engine_signals[1].type);
+    printf("Longitude: %zu - %d\n",location_signals[1].idx, location_signals[1].type);
+    printf("Latitude: %zu - %d\n",location_signals[0].idx, location_signals[0].type);
+    printf("Roll: %zu - %d\n",attitude_signals[0].idx, attitude_signals[0].type);
+    printf("Engine0: %zu - %d\n",engine_signals[0].idx, engine_signals[0].type);
+    printf("Engine1: %zu - %d\n",engine_signals[1].idx, engine_signals[1].type);
 
     fg_tape_dump(tape);
 
