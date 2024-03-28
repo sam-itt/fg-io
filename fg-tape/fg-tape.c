@@ -353,6 +353,12 @@ bool fg_tape_read_records(FGTape *self, FGTapeRecordSet *set, SGFile *file)
         printf("Couldn't get payload, bailing out\n");
         return false;
     }
+
+    if(self->unaligned_record_size == 0) {
+        printf("DEBUG: Wrong unaligned_record_size");
+        return false;
+    }
+    
     set->record_count = container.size/self->unaligned_record_size;
 
     if(self->unaligned_record_size != self->record_size){
@@ -756,6 +762,10 @@ bool fg_tape_cursor_get_signal_value(FGTapeCursor *self, size_t nsignals, FGTape
         else
             v2 = NULL;
         fg_tape_interpolate_values(signal->type, signal->interpolation , self->ratio, v2, v1, buffer_cursor);
+        if(signal->type >= sizeof(types_sizes)) {
+            printf("DEBUG: Wrong signal type, skiped!!!");
+            continue;
+        }
         buffer_cursor += types_sizes[signal->type];
     }
     return true;
