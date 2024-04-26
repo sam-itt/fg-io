@@ -139,19 +139,24 @@ bool fg_tape_read_signal(FGTape *self, char **cursor)
 
     XString tmptype;
     _get_node_value(begin, "type", &tmptype);
-    //printf("Read signal type: %.*s\n", tlen, tmptype);
+    //printf("Read signal type: %.*s\n", (int)tlen, tmptype);
 
     XString prop;
     _get_node_value(begin, "property", &prop);
     if(!prop.str){
-        printf("Couldn't find property name for current %.*s signal, bailing out\n", (uint32_t)tmptype.len, tmptype.str);
+	/* WARNING: printf expects an int for the '*' width. The length (tmptype.len) is size_t.
+	 * size_t is > INT_MAX on 64bits machines. However signal name is very unlikely to be > 2GB
+	 * so ignoring the 'potential' problem here and just casting to int.
+	 * */
+        printf("Couldn't find property name for current %.*s signal, bailing out\n", (int)tmptype.len, tmptype.str);
         return false;
     }
 
     XString ipol_type;
     _get_node_value(begin, "interpolation", &ipol_type);
     if(!ipol_type.str){
-        printf("Couldn't find interpolation for current  %.*s signal, bailing out\n", (uint32_t)tmptype.len, tmptype.str);
+	/*WARNING: see comment below*/
+        printf("Couldn't find interpolation for current  %.*s signal, bailing out\n", (int)tmptype.len, tmptype.str);
         return false;
     }
 
@@ -163,7 +168,8 @@ bool fg_tape_read_signal(FGTape *self, char **cursor)
         }
     }
     if( tmpipol < 0){
-        printf("Unknown interpolation type: %.*s, bailing out\n", (uint32_t)ipol_type.len, ipol_type.str);
+	/*WARNING: see comment below*/
+        printf("Unknown interpolation type: %.*s, bailing out\n", (int)ipol_type.len, ipol_type.str);
         return false;
     }
 
@@ -174,7 +180,8 @@ bool fg_tape_read_signal(FGTape *self, char **cursor)
         }
     }
     if(!set){
-        printf("Couldn't find a matching signal type for read value %.*s", (uint32_t)tmptype.len, tmptype.str);
+	/*WARNING: see comment below*/
+        printf("Couldn't find a matching signal type for read value %.*s",(int)tmptype.len, tmptype.str);
         return false;
     }
 
